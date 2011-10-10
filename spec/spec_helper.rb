@@ -6,6 +6,6 @@ Spork.prefork do
 end
 
 Spork.each_run do
-  require 'rack-ssl-escrow'
+  require 'rack-escrow'
 end
 
