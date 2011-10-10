@@ -13,5 +13,15 @@ group :development do
   gem 'pry'
   gem 'pry-remote'
   gem 'foreman'
+
+  # Example app support
+  # Sinatra App
+  gem 'sinatra'
+
+  # Rails app
+  gem 'rails'
+  gem 'jquery-rails'
+  gem 'thin'
+  gem 'daemons'
 end
 
