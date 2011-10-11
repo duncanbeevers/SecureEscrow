@@ -23,5 +23,6 @@ group :development do
   gem 'jquery-rails'
   gem 'thin'
   gem 'daemons'
+  gem 'jquery-rails'
 end
 
