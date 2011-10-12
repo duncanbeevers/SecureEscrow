@@ -1,6 +1,7 @@
 Rails.application.config.middleware.use(
   Rack::Escrow::Middleware,
-  Rails.application)
+  Rails.application,
+  $redis)
 
 # ================================
 # When using with Devise / Warden,
@@ -10,5 +11,6 @@ Rails.application.config.middleware.use(
 #   Rails.application.config.middleware.insert_before(
 #     Warden::Manager,
 #     Rack::Escrow::Middleware,
-#     Rails.application)
+#     Rails.application,
+#     $redis)
 
