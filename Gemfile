@@ -2,6 +2,9 @@ source "http://rubygems.org"
 
 gemspec
 
+gem 'uuid'
+gem 'actionpack'
+
 group :development do
   gem 'rspec', '>=2.6.0'
   gem 'spork', '~> 0.9.0.rc9'
