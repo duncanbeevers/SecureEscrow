@@ -1,5 +1,4 @@
 require "uuid"
-require "active_support"
 
 module SecureEscrow
   class Middleware
@@ -69,7 +68,7 @@ module SecureEscrow
     # Store in Redis
     def store_in_escrow status, header, response
       id = UUID.generate
-      nonce = ActiveSupport::SecureRandom.hex(4)
+      nonce = SecureRandom.hex(4)
 
       response_body = []
       response.each { |content| response_body.push(content) }
