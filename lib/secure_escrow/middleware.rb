@@ -14,14 +14,10 @@ module SecureEscrow
     RESPONSE       = 'response'
     BAD_NONCE      = 'Bad nonce'
     
-    def initialize app, rails_application, store
-      @rails_application = rails_application
-      rails_application.config.escrow = self
+    def initialize app, store
       @app   = app
       @store = store
       @recognized_escrow_segments = []
-      # binding.pry
-      # rails_application.assets.paths.push assets_path
     end
 
     def call env
@@ -41,10 +37,6 @@ module SecureEscrow
           return [ status, header, response ]
         end
       end
-    end
-
-    def recognize_escrow segment
-      @recognized_escrow_segments.push segment
     end
 
     private
