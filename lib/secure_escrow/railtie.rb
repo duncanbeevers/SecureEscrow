@@ -51,6 +51,3 @@ module SecureEscrow
   end
 end
 
-ActionView::Base.send(:include, SecureEscrow::Railtie::ActionViewHelper)
-ActionDispatch::Routing::Mapper.send(:include, SecureEscrow::Railtie::Routing)
-
