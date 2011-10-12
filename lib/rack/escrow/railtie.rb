@@ -1,5 +1,4 @@
 require "action_dispatch"
-require "rack/escrow/engine"
 
 module Rack
   module Escrow
