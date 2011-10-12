@@ -1,5 +1,5 @@
 require "uuid"
-# require "async-rack"
+require "active_support"
 
 module Rack
   module Escrow
@@ -7,11 +7,16 @@ module Rack
       REQUEST_METHOD = 'REQUEST_METHOD'
       REQUEST_PATH   = 'REQUEST_PATH'
       POST           = 'POST'
+      GET            = 'GET'
       RAILS_ROUTES   = 'action_dispatch.routes'
       LOCATION       = 'Location'
+      ESCROW_MATCH   = /^\/escrow\/(.+)\/(.+$)/
+      TTL            = 180
+      NONCE          = 'nonce'
+      RESPONSE       = 'response'
+      BAD_NONCE      = 'Bad nonce'
       
       def initialize app, rails_application, store
-        puts "Initializing EscrowMiddleware"
         @rails_application = rails_application
         rails_application.config.escrow = self
         @app   = app
@@ -20,46 +25,95 @@ module Rack
       end
 
       def call env
-        status, header, response = @app.call env
-        [ status, header, response ]
-
-        if is_escrowed? env
-          nonce = UUID.generate
-
-          response_body = []
-          response.each { |content| response_body.push(content) }
-
-          resolved_store = @store.call
-          key = "escrow:#{nonce}"
-          resolved_store.set key, [ status, header, response_body.join() ].to_json
-
-          # Set TTL on secure response
-          resolved_store.expire key, 60
-
-          # HTTP Status Code 303 - See Other
-          redirect_to = "/escrow/#{nonce}"
-          [ 303, header.merge(LOCATION => redirect_to), [ "Escrowed at #{nonce}" ] ]
+        if serve_from_escrow? env
+          # No need to call the Rails app if we're serving a response from escrow
+          response_from_escrow env
         else
+          status, header, response = @app.call env
           [ status, header, response ]
+
+          if keep_in_escrow? env
+            id, nonce = store_in_escrow(status, header, response)
+
+            # HTTP Status Code 303 - See Other
+            redirect_to = "/escrow/#{id}/#{nonce}"
+            [ 303, header.merge(LOCATION => redirect_to), [ "Escrowed at #{redirect_to}" ] ]
+          else
+            [ status, header, response ]
+          end
         end
       end
 
       def recognize_escrow segment
-        puts "Adding #{segment} to recognized escrow segments"
         @recognized_escrow_segments.push segment
       end
-      private
 
+      private
       def rails_routes env
         @rails_routes ||= env[RAILS_ROUTES]
       end
 
-      def is_escrowed? env
+      def keep_in_escrow? env
         method = env[REQUEST_METHOD]
 
         return false unless POST == method
         h = rails_routes(env).recognize_path env[REQUEST_PATH], method: method
         h[:escrow]
+      end
+
+      def store_in_escrow status, header, response
+        id = UUID.generate
+        nonce = ActiveSupport::SecureRandom.hex(4)
+
+        response_body = []
+        response.each { |content| response_body.push(content) }
+        value = {
+          NONCE    => nonce,
+          RESPONSE => [ status, header, [ response_body.join ] ]
+        }
+
+        key = escrow_key id
+        resolved_store.set key, value.to_json
+
+        # Set TTL on secure response
+        resolved_store.expire key, TTL
+
+        [ id, nonce ]
+      end
+
+      def serve_from_escrow? env
+        return false unless GET == env[REQUEST_METHOD]
+        id, nonce = escrow_id_and_nonce env
+        key = escrow_key id
+        resolved_store.exists key
+      end
+
+      def response_from_escrow env
+        id, nonce = escrow_id_and_nonce env
+        key = escrow_key id
+        value = JSON.parse(resolved_store.get key)
+
+        if nonce == value[NONCE]
+          # Destroy the stored value
+          resolved_store.del key
+          value[RESPONSE]
+        else
+          # HTTP Status Code 403 - Forbidden
+          [ 403, {}, [ BAD_NONCE ] ]
+        end
+      end
+
+      def resolved_store
+        @resolved_store ||= @store.call
+      end
+
+      def escrow_key id
+        "escrow:#{id}"
+      end
+
+      def escrow_id_and_nonce env
+        match = env[REQUEST_PATH].match ESCROW_MATCH
+        match && match[1..2]
       end
     end
   end
