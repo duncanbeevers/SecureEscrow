@@ -4,16 +4,15 @@ require "action_pack"
 module SecureEscrow
   module Railtie
     module Routing
-      def post *args, &block
+      def escrow *args, &block
         options = args.last.kind_of?(Hash) ? args.last : {}
-        escrow = options.delete(:escrow)
 
         # This modifies the options hash that gets supered
         # up to the original post implementation
-        mark_escrow!(options, &block) if escrow
+        mark_escrow!(options, &block)
 
         # This may rely on the options hash having been modified
-        super(*args, &block)
+        post *args, &block
       end
 
       private
@@ -22,7 +21,7 @@ module SecureEscrow
           k.kind_of?(String)
         end.first
 
-        Rails.application.config.escrow.recognize_escrow segment
+        register_escrow_segment_with_engine segment
 
         # Mark the Rails routes as escrowed
         # so they can be recognized by the Middleware
