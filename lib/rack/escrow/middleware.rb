@@ -30,10 +30,9 @@ module Rack
           response_from_escrow env
         else
           status, header, response = @app.call env
-          [ status, header, response ]
 
           if keep_in_escrow? env
-            id, nonce = store_in_escrow(status, header, response)
+            id, nonce = store_in_escrow status, header, response
 
             # HTTP Status Code 303 - See Other
             redirect_to = "/escrow/#{id}/#{nonce}"
@@ -61,6 +60,12 @@ module Rack
         h[:escrow]
       end
 
+      # Take a Rack status, header, and response
+      # Serialize the response to a string
+      # Serialize the structure as JSON
+      # Generate a unique id for the data
+      # Generate a nonce for the data
+      # Store in Redis
       def store_in_escrow status, header, response
         id = UUID.generate
         nonce = ActiveSupport::SecureRandom.hex(4)
@@ -72,6 +77,8 @@ module Rack
           RESPONSE => [ status, header, [ response_body.join ] ]
         }
 
+        # Serialze the nonce and Rack response triplet
+        # and store in Redis
         key = escrow_key id
         resolved_store.set key, value.to_json
 
