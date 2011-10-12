@@ -10,14 +10,14 @@ module Rack
 
           # This modifies the options hash that gets supered
           # up to the original post implementation
-          mount_escrow!(options, &block) if escrow
+          mark_escrow!(options, &block) if escrow
 
           # This may rely on the options hash having been modified
           super(*args, &block)
         end
 
         private
-        def mount_escrow! options, &block
+        def mark_escrow! options, &block
           segment, endpoint = options.select do |k, v|
             k.kind_of?(String)
           end.first
