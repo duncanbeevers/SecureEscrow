@@ -16,10 +16,9 @@ module SecureEscrow
 
     attr_reader :store
 
-    def initialize app, store, insecure_prefix
+    def initialize app, store
       @app = app
       @store = store
-      @insecure_prefix = insecure_prefix
     end
 
     def call env
@@ -31,10 +30,21 @@ module SecureEscrow
 
         if keep_in_escrow? env
           id, nonce = store_in_escrow status, header, response
+          token = "#{id}.#{nonce}"
 
           # HTTP Status Code 303 - See Other
-          redirect_to = "#{@insecure_prefix}escrow/#{id}/#{nonce}"
-          return [ 303, header.merge(LOCATION => redirect_to), [ "Escrowed at #{redirect_to}" ] ]
+          routes = @app.routes
+          config = @app.config
+
+          redirect_to = routes.url_for(
+            routes.recognize_path(env['REQUEST_PATH'], env).merge(
+                protocol: config.insecure_domain_protocol,
+                host:     config.insecure_domain_name,
+                port:     config.insecure_domain_port,
+                escrow:   token
+              ))
+
+          return [ 303, header.merge(LOCATION => redirect_to), [ "Escrowed at #{token}" ] ]
         else
           return [ status, header, response ]
         end
