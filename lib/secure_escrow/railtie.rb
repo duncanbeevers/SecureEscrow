@@ -30,10 +30,6 @@ module SecureEscrow
 
       private
       def escrow_options options
-        # Add data-escrow attribute to the form element
-        html_options = options[:html] || {}
-        options.merge(html: html_options.merge(DATA_ESCROW => true))
-
         # Rewrite URL to point to secure domain
         app = Rails.application
         config = app.config
@@ -47,7 +43,10 @@ module SecureEscrow
             ))
 
         options[:url] = submission_url
-        options
+
+        # Add data-escrow attribute to the form element
+        html_options = options[:html] || {}
+        options.merge(html: html_options.merge(DATA_ESCROW => true))
       end
     end
   end
