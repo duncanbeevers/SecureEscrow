@@ -4,11 +4,12 @@ module SecureEscrow
   class Middleware
     REQUEST_METHOD = 'REQUEST_METHOD'
     REQUEST_PATH   = 'REQUEST_PATH'
+    QUERY_STRING   = 'QUERY_STRING'
     POST           = 'POST'
     GET            = 'GET'
     RAILS_ROUTES   = 'action_dispatch.routes'
     LOCATION       = 'Location'
-    ESCROW_MATCH   = /^\/escrow\/(.+)\/(.+$)/
+    ESCROW_MATCH   = /^escrow=(.+)\.(.+)$/
     TTL            = 180 # Seconds until proxied response expires
     NONCE          = 'nonce'
     RESPONSE       = 'response'
@@ -119,7 +120,7 @@ module SecureEscrow
     end
 
     def escrow_id_and_nonce env
-      match = env[REQUEST_PATH].match ESCROW_MATCH
+      match = env[QUERY_STRING].match ESCROW_MATCH
       match && match[1..2]
     end
 
