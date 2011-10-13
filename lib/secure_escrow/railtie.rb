@@ -13,6 +13,8 @@ module SecureEscrow
 
     module ActionViewHelper
       DATA_ESCROW = 'data-escrow'
+      IFRAME = 'iframe'
+      POST   = 'post'
 
       def escrow_form_for record, options = {}, &proc
         options[:html] ||= {}
@@ -46,7 +48,9 @@ module SecureEscrow
 
         # Add data-escrow attribute to the form element
         html_options = options[:html] || {}
-        options.merge(html: html_options.merge(DATA_ESCROW => true))
+
+        escrow_method = options.delete(:remote) ? IFRAME : POST
+        options.merge(html: html_options.merge(DATA_ESCROW => escrow_method))
       end
     end
   end
