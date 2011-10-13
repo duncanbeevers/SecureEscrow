@@ -4,29 +4,10 @@ require "action_pack"
 module SecureEscrow
   module Railtie
     module Routing
-      def escrow *args, &block
-        options = args.last.kind_of?(Hash) ? args.last : {}
-
-        # This modifies the options hash that gets supered
-        # up to the original post implementation
-        mark_escrow!(options, &block)
-
-        # This may rely on the options hash having been modified
-        post *args, &block
-      end
-
-      private
-      def mark_escrow! options, &block
-        segment, endpoint = options.select do |k, v|
-          k.kind_of?(String)
-        end.first
-
-        register_escrow_segment_with_engine segment
-
-        # Mark the Rails routes as escrowed
-        # so they can be recognized by the Middleware
-        options[:defaults] ||= {}
-        options[:defaults][:escrow] = true
+      def escrow options, &block
+        defaults = options[:defaults] || {}
+        defaults[:escrow] = true
+        post options.merge(defaults), &block
       end
     end
 

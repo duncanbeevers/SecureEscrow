@@ -13,11 +13,11 @@ module SecureEscrow
     NONCE          = 'nonce'
     RESPONSE       = 'response'
     BAD_NONCE      = 'Bad nonce'
-    
+    attr_reader :store
+
     def initialize app, store
-      @app   = app
+      @app = app
       @store = store
-      @recognized_escrow_segments = []
     end
 
     def call env
@@ -72,10 +72,10 @@ module SecureEscrow
       # Serialze the nonce and Rack response triplet
       # and store in Redis
       key = escrow_key id
-      resolved_store.set key, value.to_json
+      store.set key, value.to_json
 
       # Set TTL on secure response
-      resolved_store.expire key, TTL
+      store.expire key, TTL
 
       [ id, nonce ]
     end
@@ -84,26 +84,22 @@ module SecureEscrow
       return false unless GET == env[REQUEST_METHOD]
       id, nonce = escrow_id_and_nonce env
       key = escrow_key id
-      resolved_store.exists key
+      store.exists key
     end
 
     def response_from_escrow env
       id, nonce = escrow_id_and_nonce env
       key = escrow_key id
-      value = JSON.parse(resolved_store.get key)
+      value = JSON.parse(store.get key)
 
       if nonce == value[NONCE]
         # Destroy the stored value
-        resolved_store.del key
+        store.del key
         value[RESPONSE]
       else
         # HTTP Status Code 403 - Forbidden
         [ 403, {}, [ BAD_NONCE ] ]
       end
-    end
-
-    def resolved_store
-      @resolved_store ||= @store.call
     end
 
     def escrow_key id
