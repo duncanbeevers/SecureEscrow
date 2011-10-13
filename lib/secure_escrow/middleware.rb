@@ -13,11 +13,13 @@ module SecureEscrow
     NONCE          = 'nonce'
     RESPONSE       = 'response'
     BAD_NONCE      = 'Bad nonce'
+
     attr_reader :store
 
-    def initialize app, store
+    def initialize app, store, insecure_prefix
       @app = app
       @store = store
+      @insecure_prefix = insecure_prefix
     end
 
     def call env
@@ -31,7 +33,7 @@ module SecureEscrow
           id, nonce = store_in_escrow status, header, response
 
           # HTTP Status Code 303 - See Other
-          redirect_to = "/escrow/#{id}/#{nonce}"
+          redirect_to = "#{@insecure_prefix}escrow/#{id}/#{nonce}"
           return [ 303, header.merge(LOCATION => redirect_to), [ "Escrowed at #{redirect_to}" ] ]
         else
           return [ status, header, response ]
