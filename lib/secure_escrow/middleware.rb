@@ -123,10 +123,6 @@ module SecureEscrow
       match = env[QUERY_STRING].match ESCROW_MATCH
       match && match[1..2]
     end
-
-    def assets_path
-      File.expand_path(File.join(File.dirname(__FILE__), '../assets'))
-    end
   end
 end
 
