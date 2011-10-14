@@ -45,7 +45,7 @@ module SecureEscrow
                 escrow:   token
               ))
 
-          return [ 303, header.merge(LOCATION => redirect_to), [ "Escrowed at #{token}" ] ]
+          return [ 303, { LOCATION => redirect_to }, [ "Escrowed at #{token}" ] ]
         else
           return [ status, header, response ]
         end
