@@ -67,10 +67,12 @@ In the following example, I show replacing a <tt>post</tt> route with an <tt>esc
     get    'signout'=> 'sessions#destroy',  as: :destroy_user_session
 
 ### Deliver JavaScript assets
-SecureEscrow integrates in the Rails asset pipeline. Just add the following to your <tt>application.js</tt>
+SecureEscrow integrates in the Rails asset pipeline. Just add the following to your <tt>application.js</tt>.
+
     // SecureEscrow
     // ======================
     //= require secure_escrow
+
  
 ### Generate forms that submit to the escrow
  View helpers are provided to generate forms that submit to the escrow.
