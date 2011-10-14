@@ -77,6 +77,18 @@ module SecureEscrow
 
       response_body = []
       response.each { |content| response_body.push(content) }
+
+      config = @app.config
+      routes = @app.routes
+
+      # Rewrite redirect to secure domain
+      header[LOCATION] = routes.url_for(
+        routes.recognize_path(header[LOCATION]).merge(
+          host:     config.insecure_domain_name,
+          protocol: config.insecure_domain_protocol,
+          port:     config.insecure_domain_port
+        ))
+
       value = {
         NONCE    => nonce,
         RESPONSE => [ status, header, [ response_body.join ] ]
@@ -108,10 +120,11 @@ module SecureEscrow
       if nonce == value[NONCE]
         # Destroy the stored value
         store.del key
-        value[RESPONSE]
+
+        return value[RESPONSE]
       else
         # HTTP Status Code 403 - Forbidden
-        [ 403, {}, [ BAD_NONCE ] ]
+        return [ 403, {}, [ BAD_NONCE ] ]
       end
     end
 
