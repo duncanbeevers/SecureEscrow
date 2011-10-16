@@ -77,6 +77,7 @@ module SecureEscrow
 
       response_body = []
       response.each { |content| response_body.push(content) }
+      response.close if response.respond_to? :close
 
       config = @app.config
       routes = @app.routes
