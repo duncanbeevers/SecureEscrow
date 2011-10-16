@@ -1,3 +1,5 @@
+require 'rails'
+
 # Register as a Rails engine
 # in order to hook into asset pipeline
 module SecureEscrow
