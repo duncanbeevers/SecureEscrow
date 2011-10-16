@@ -4,30 +4,67 @@ describe 'SecureEscrow::Middleware' do
   let(:app) { MockEngine.new }
   let(:store) { MockRedis.new }
   let(:middleware) { SecureEscrow::Middleware.new app, store }
-  let(:env_keep) { {} }
-  let(:env_serve) { {} }
-  let(:env_pass) { {} }
+  let(:presenter) { SecureEscrow::Middleware::Presenter.new app, env }
+  let(:env) { {} }
 
-  it 'should be callable' do
-    middleware.should respond_to(:call).with(1).argument
-  end
-
-  it 'should check whether to keep a request in escrow' do
-    middleware.should_receive(:serve_from_escrow?).with(env_pass)
-    middleware.call env_pass
-  end
-
-  context 'when request is not served from escrow' do
-    it 'should check whether to serve a request from escrow' do
-      middleware.should_receive(:keep_in_escrow?).with(env_pass)
-      middleware.call env_pass
+  context 'as a Rack application' do
+    it 'should be callable' do
+      middleware.should respond_to(:call).with(1).argument
     end
 
-    context 'when request does not interact with escrow' do
-      it 'should return response from app' do
-        middleware.call(env_pass).should == app.call(env_pass)
+    it 'should handle_presenter with wrapped environment' do
+      middleware.should_receive(:presenter).with(env).
+        once.and_return(presenter)
+
+      middleware.should_receive(:handle_presenter).with(presenter).once
+
+      middleware.call(env)
+    end
+
+    context 'when handling the presenter' do
+      it 'should first serve a response from escrow' do
+        presenter.should_receive(:serve_response_from_escrow?).
+          once.and_return(true)
+
+        presenter.should_receive(:serve_response_from_escrow!).
+          once
+
+        presenter.should_not_receive(:store_response_in_escrow_and_redirect!)
+        presenter.should_not_receive(:serve_response_from_application!)
+
+        middleware.handle_presenter presenter
+      end
+
+      it 'should store a response in the escrow and redirect' do
+        presenter.should_receive(:serve_response_from_escrow?).
+          once.and_return(false)
+        presenter.should_receive(:store_response_in_escrow?).
+          once.and_return(true)
+        presenter.should_receive(:store_response_in_escrow_and_redirect!).
+          once
+
+        presenter.should_not_receive(:serve_response_from_escrow!)
+        presenter.should_not_receive(:serve_response_from_application!)
+
+        middleware.handle_presenter presenter
+      end
+
+      it 'should pass-through other requests' do
+        presenter.should_receive(:serve_response_from_escrow?).
+          once.and_return(false)
+        presenter.should_receive(:store_response_in_escrow?).
+          once.and_return(false)
+        presenter.should_receive(:serve_response_from_application!).
+          once
+
+        presenter.should_not_receive(:serve_response_from_escrow!)
+        presenter.should_not_receive(:store_response_in_escrow_and_redirect!)
+
+        middleware.handle_presenter presenter
       end
     end
   end
+
+
 end
 

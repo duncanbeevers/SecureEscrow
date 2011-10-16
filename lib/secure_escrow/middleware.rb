@@ -23,33 +23,36 @@ module SecureEscrow
     end
 
     def call env
-      if serve_from_escrow? env
-        # No need to call the Rails app if we're serving a response from escrow
-        return response_from_escrow env
+      handle_presenter presenter(env)
+    end
+
+    def presenter env
+      Presenter.new(@app, env)
+    end
+
+    def handle_presenter e
+      if e.serve_response_from_escrow?
+        e.serve_response_from_escrow!
+      elsif e.store_response_in_escrow?
+        e.store_response_in_escrow_and_redirect!
       else
-        status, header, response = @app.call env
-
-        if keep_in_escrow? env
-          id, nonce = store_in_escrow status, header, response
-          token = "#{id}.#{nonce}"
-
-          # HTTP Status Code 303 - See Other
-          routes = @app.routes
-          config = @app.config
-
-          redirect_to = routes.url_for(
-            routes.recognize_path(env['REQUEST_PATH'], env).merge(
-                protocol: config.insecure_domain_protocol,
-                host:     config.insecure_domain_name,
-                port:     config.insecure_domain_port,
-                escrow:   token
-              ))
-
-          return [ 303, { LOCATION => redirect_to }, [ "Escrowed at #{token}" ] ]
-        else
-          return [ status, header, response ]
-        end
+        e.serve_response_from_application!
       end
+
+      #if serve_response_from_escrow? env
+        ## No need to call the Rails app if we're serving a response from escrow
+        #serve_response_from_escrow! env
+      #else
+        ## Get the response from the Rails app
+        #call_result = @app.call env
+
+        #if keep_in_escrow? env
+          #store_in_escrow_and_redirect! env, call_result
+        #else
+          #call_result
+        #end
+      #end
+
     end
 
     private
@@ -63,6 +66,26 @@ module SecureEscrow
       return false unless POST == method
       h = rails_routes(env).recognize_path env[REQUEST_PATH], method: method
       h[:escrow]
+    end
+
+    def store_in_escrow_and_redirect! env, call_result
+      status, header, response = call_result
+      id, nonce = store_in_escrow status, header, response
+      token = "#{id}.#{nonce}"
+
+      # HTTP Status Code 303 - See Other
+      routes = @app.routes
+      config = @app.config
+
+      redirect_to = routes.url_for(
+        routes.recognize_path(env[REQUEST_PATH], env).merge(
+            protocol: config.insecure_domain_protocol,
+            host:     config.insecure_domain_name,
+            port:     config.insecure_domain_port,
+            escrow:   token
+          ))
+
+      return [ 303, { LOCATION => redirect_to }, [ "Escrowed at #{token}" ] ]
     end
 
     # Take a Rack status, header, and response
@@ -106,14 +129,14 @@ module SecureEscrow
       [ id, nonce ]
     end
 
-    def serve_from_escrow? env
+    def serve_response_from_escrow? env
       return false unless GET == env[REQUEST_METHOD]
       id, nonce = escrow_id_and_nonce env
       key = escrow_key id
       store.exists key
     end
 
-    def response_from_escrow env
+    def serve_response_from_escrow! env
       id, nonce = escrow_id_and_nonce env
       key = escrow_key id
       value = JSON.parse(store.get key)
@@ -137,6 +160,16 @@ module SecureEscrow
       match = env[QUERY_STRING].match ESCROW_MATCH
       match && match[1..2]
     end
+
+    class Presenter
+      attr_reader :app, :env
+
+      def initialize app, env
+        @app = app
+        @env = env
+      end
+    end
   end
+
 end
 
