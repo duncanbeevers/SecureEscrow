@@ -1,4 +1,5 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'spec_helper'))
+include SecureEscrow::MiddlewareConstants
 
 describe 'SecureEscrow::Middleware' do
   let(:app) { MockEngine.new }
@@ -65,6 +66,12 @@ describe 'SecureEscrow::Middleware' do
     end
   end
 
+  context 'SecureEscrow::Middleware::Presenter' do
+    it 'not store GETs' do
+      presenter.env[REQUEST_METHOD] = GET
+      presenter.store_response_in_escrow?
+    end
+  end
 
 end
 

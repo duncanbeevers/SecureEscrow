@@ -1,7 +1,7 @@
 require "uuid"
 
 module SecureEscrow
-  class Middleware
+  module MiddlewareConstants
     REQUEST_METHOD = 'REQUEST_METHOD'
     REQUEST_PATH   = 'REQUEST_PATH'
     QUERY_STRING   = 'QUERY_STRING'
@@ -14,6 +14,10 @@ module SecureEscrow
     NONCE          = 'nonce'
     RESPONSE       = 'response'
     BAD_NONCE      = 'Bad nonce'
+  end
+
+  class Middleware
+    include MiddlewareConstants
 
     attr_reader :store
 
@@ -55,17 +59,48 @@ module SecureEscrow
 
     end
 
-    private
-    def rails_routes env
-      @rails_routes ||= env[RAILS_ROUTES]
+    class Presenter
+      attr_reader :app, :env
+
+      def initialize app, env
+        @app = app
+        @env = env
+      end
+
+      def store_response_in_escrow?
+        method = env[REQUEST_METHOD]
+
+        return false unless POST == method
+        h = rails_routes(env).recognize_path env[REQUEST_PATH], method: method
+        h[:escrow]
+      end
+
+      def serve_response_from_escrow? env
+        return false unless GET == env[REQUEST_METHOD]
+        id, nonce = escrow_id_and_nonce env
+        key = escrow_key id
+        store.exists key
+      end
+
+    def serve_response_from_escrow! env
+      id, nonce = escrow_id_and_nonce env
+      key = escrow_key id
+      value = JSON.parse(store.get key)
+
+      if nonce == value[NONCE]
+        # Destroy the stored value
+        store.del key
+
+        return value[RESPONSE]
+      else
+        # HTTP Status Code 403 - Forbidden
+        return [ 403, {}, [ BAD_NONCE ] ]
+      end
     end
 
-    def keep_in_escrow? env
-      method = env[REQUEST_METHOD]
-
-      return false unless POST == method
-      h = rails_routes(env).recognize_path env[REQUEST_PATH], method: method
-      h[:escrow]
+              private
+    def rails_routes env
+      @rails_routes ||= env[RAILS_ROUTES]
     end
 
     def store_in_escrow_and_redirect! env, call_result
@@ -129,28 +164,7 @@ module SecureEscrow
       [ id, nonce ]
     end
 
-    def serve_response_from_escrow? env
-      return false unless GET == env[REQUEST_METHOD]
-      id, nonce = escrow_id_and_nonce env
-      key = escrow_key id
-      store.exists key
-    end
 
-    def serve_response_from_escrow! env
-      id, nonce = escrow_id_and_nonce env
-      key = escrow_key id
-      value = JSON.parse(store.get key)
-
-      if nonce == value[NONCE]
-        # Destroy the stored value
-        store.del key
-
-        return value[RESPONSE]
-      else
-        # HTTP Status Code 403 - Forbidden
-        return [ 403, {}, [ BAD_NONCE ] ]
-      end
-    end
 
     def escrow_key id
       "escrow:#{id}"
@@ -161,14 +175,8 @@ module SecureEscrow
       match && match[1..2]
     end
 
-    class Presenter
-      attr_reader :app, :env
-
-      def initialize app, env
-        @app = app
-        @env = env
-      end
     end
+
   end
 
 end
