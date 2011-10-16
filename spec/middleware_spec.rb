@@ -16,5 +16,18 @@ describe 'SecureEscrow::Middleware' do
     middleware.should_receive(:serve_from_escrow?).with(env_pass)
     middleware.call env_pass
   end
+
+  context 'when request is not served from escrow' do
+    it 'should check whether to serve a request from escrow' do
+      middleware.should_receive(:keep_in_escrow?).with(env_pass)
+      middleware.call env_pass
+    end
+
+    context 'when request does not interact with escrow' do
+      it 'should return response from app' do
+        middleware.call(env_pass).should == app.call(env_pass)
+      end
+    end
+  end
 end
 
