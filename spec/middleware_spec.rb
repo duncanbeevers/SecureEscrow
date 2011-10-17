@@ -94,6 +94,16 @@ describe 'SecureEscrow::Middleware' do
 
         presenter.store_response_in_escrow?.should be_false
       end
+
+      it 'should store escrow routes' do
+        presenter.env[REQUEST_METHOD] = POST
+
+        app.routes.should_receive(:recognize_path).
+          once.with(env[REQUEST_PATH], { method: POST }).
+          and_return(controller: 'session', action: 'create', escrow: true)
+
+        presenter.store_response_in_escrow?.should be_true
+      end
     end
 
     describe 'serve_response_from_escrow!' do
