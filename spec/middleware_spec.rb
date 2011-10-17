@@ -67,34 +67,45 @@ describe 'SecureEscrow::Middleware' do
   end
 
   context 'Presenter' do
-    it 'should not store GETs' do
-      presenter.env[REQUEST_METHOD] = GET
-      presenter.store_response_in_escrow?.should be_false
+    describe 'store_response_in_escrow?' do
+      it 'should not store GETs' do
+        presenter.env[REQUEST_METHOD] = GET
+        presenter.store_response_in_escrow?.should be_false
+      end
+
+      it 'should not store non-existent routes' do
+        presenter.env[REQUEST_METHOD] = POST
+
+        app.routes.should_receive(:recognize_path).
+          once.with(env[REQUEST_PATH], { method: POST }).
+          and_raise(
+            ActionController::RoutingError.new("No route matches #{env[REQUEST_PATH]}")
+          )
+
+        presenter.store_response_in_escrow?.should be_false
+      end
+
+      it 'should not store non-escrow routes' do
+        presenter.env[REQUEST_METHOD] = POST
+
+        app.routes.should_receive(:recognize_path).
+          once.with(env[REQUEST_PATH], { method: POST }).
+          and_return(controller: 'session', action: 'create')
+
+        presenter.store_response_in_escrow?.should be_false
+      end
     end
 
-    it 'should not store non-existent routes' do
-      presenter.env[REQUEST_METHOD] = POST
-
-      app.routes.should_receive(:recognize_path).
-        once.with(env[REQUEST_PATH], { method: POST }).
-        and_raise(
-          ActionController::RoutingError.new("No route matches #{env[REQUEST_PATH]}")
-        )
-
-      presenter.store_response_in_escrow?.should be_false
+    describe 'serve_response_from_escrow!' do
+      it 'should return 403 - Forbidden when nonce does not match' do
+        id = 'id'
+        presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=#{id}.bad-nonce"
+        store.set(presenter.escrow_key(id), ActiveSupport::JSON.encode(NONCE => 'good-nonce', RESPONSE => []))
+        presenter.serve_response_from_escrow![0].should eq 403
+      end
     end
 
-    it 'should not store non-escrow routes' do
-      presenter.env[REQUEST_METHOD] = POST
-
-      app.routes.should_receive(:recognize_path).
-        once.with(env[REQUEST_PATH], { method: POST }).
-        and_return(controller: 'session', action: 'create')
-
-      presenter.store_response_in_escrow?.should be_false
-    end
-
-    context 'when recognizing requests for content from the escrow' do
+    describe 'escrow_id and escrow_nonce' do
       context 'when insecure_domain_name is different from secure_domain_name' do
         let(:app) {
           MockEngine.new(
@@ -103,37 +114,28 @@ describe 'SecureEscrow::Middleware' do
           )
         }
 
-        it 'should recognize escrow id from query string' do
+        it 'should recognize escrow id and nonce from query string' do
           presenter.env[QUERY_STRING] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
-          presenter.escrow_id.should == 'id'
-        end
-
-        it 'should recognize escrow nonce from query string' do
-          presenter.env[QUERY_STRING] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
-          presenter.escrow_nonce.should == 'nonce'
+          presenter.escrow_id.should    eq 'id'
+          presenter.escrow_nonce.should eq 'nonce'
         end
       end
 
       context 'when insecure_domain_name is the same as secure_domain_name' do
+        let(:app) {
+          MockEngine.new(
+            secure_domain_name:   'www.example.com',
+            insecure_domain_name: 'www.example.com'
+          )
+        }
+
         it 'should recognize escrow id from cookie' do
           presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
-          presenter.escrow_id.should == 'id'
-        end
-
-        it 'should recognize escrow nonce from cookie' do
-          presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
-          presenter.escrow_nonce.should == 'nonce'
+          presenter.escrow_id.should    eq 'id'
+          presenter.escrow_nonce.should eq 'nonce'
         end
       end
 
-      describe 'serve_response_from_escrow!' do
-        it 'should return 403 - Forbidden when nonce does not match' do
-          id = 'id'
-          presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=#{id}.bad-nonce"
-          store.set(presenter.escrow_key(id), ActiveSupport::JSON.encode(NONCE => 'good-nonce', RESPONSE => []))
-          presenter.serve_response_from_escrow![0].should == 403
-        end
-      end
     end
   end
 
