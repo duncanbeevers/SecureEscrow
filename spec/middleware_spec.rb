@@ -5,7 +5,7 @@ describe 'SecureEscrow::Middleware' do
   let(:app) { MockEngine.new }
   let(:store) { MockRedis.new }
   let(:middleware) { SecureEscrow::Middleware.new app, store }
-  let(:presenter) { SecureEscrow::Middleware::Presenter.new app, env }
+  let(:presenter) { SecureEscrow::Middleware::Presenter.new app, store, env }
   let(:env) { {} }
 
   context 'as a Rack application' do
@@ -25,10 +25,10 @@ describe 'SecureEscrow::Middleware' do
     context 'when handling the presenter' do
       it 'should first serve a response from escrow' do
         presenter.should_receive(:serve_response_from_escrow?).
-          once.and_return(true)
+          with.once.and_return(true)
 
         presenter.should_receive(:serve_response_from_escrow!).
-          once
+          with.once
 
         presenter.should_not_receive(:store_response_in_escrow_and_redirect!)
         presenter.should_not_receive(:serve_response_from_application!)
@@ -67,9 +67,42 @@ describe 'SecureEscrow::Middleware' do
   end
 
   context 'SecureEscrow::Middleware::Presenter' do
-    it 'not store GETs' do
+    it 'should not store GETs' do
       presenter.env[REQUEST_METHOD] = GET
-      presenter.store_response_in_escrow?
+      presenter.store_response_in_escrow?.should be_false
+    end
+
+    context 'when recognizing requests for content from the escrow' do
+      context 'when insecure_domain_name is different from secure_domain_name' do
+        let(:app) {
+          MockEngine.new(
+            secure_domain_name:   'www.ssl-example.com',
+            insecure_domain_name: 'www.example.com'
+          )
+        }
+
+        it 'should recognize escrow id from query string' do
+          presenter.env[QUERY_STRING] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
+          presenter.escrow_id.should == 'id'
+        end
+
+        it 'should recognize escrow nonce from query string' do
+          presenter.env[QUERY_STRING] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
+          presenter.escrow_nonce.should == 'nonce'
+        end
+      end
+
+      context 'when insecure_domain_name is the same as secure_domain_name' do
+        it 'should recognize escrow id from cookie' do
+          presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
+          presenter.escrow_id.should == 'id'
+        end
+
+        it 'should recognize escrow nonce from cookie' do
+          presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
+          presenter.escrow_nonce.should == 'nonce'
+        end
+      end
     end
   end
 

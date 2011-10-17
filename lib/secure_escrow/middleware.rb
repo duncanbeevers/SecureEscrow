@@ -2,25 +2,24 @@ require "uuid"
 
 module SecureEscrow
   module MiddlewareConstants
-    REQUEST_METHOD = 'REQUEST_METHOD'
-    REQUEST_PATH   = 'REQUEST_PATH'
-    QUERY_STRING   = 'QUERY_STRING'
-    POST           = 'POST'
-    GET            = 'GET'
-    RAILS_ROUTES   = 'action_dispatch.routes'
-    LOCATION       = 'Location'
-    ESCROW_MATCH   = /^escrow=(.+)\.(.+)$/
-    TTL            = 180 # Seconds until proxied response expires
-    NONCE          = 'nonce'
-    RESPONSE       = 'response'
-    BAD_NONCE      = 'Bad nonce'
+    REQUEST_METHOD   = 'REQUEST_METHOD'
+    HTTP_COOKIE      = 'HTTP_COOKIE'
+    REQUEST_PATH     = 'REQUEST_PATH'
+    QUERY_STRING     = 'QUERY_STRING'
+    POST             = 'POST'
+    GET              = 'GET'
+    COOKIE_SEPARATOR = ';'
+    RAILS_ROUTES     = 'action_dispatch.routes'
+    LOCATION         = 'Location'
+    ESCROW_MATCH     = /^(.+)\.(.+)$/
+    TTL              = 180 # Seconds until proxied response expires
+    NONCE            = 'nonce'
+    RESPONSE         = 'response'
+    BAD_NONCE        = 'Bad nonce'
+    DATA_KEY         = 'secure_escrow'
   end
 
   class Middleware
-    include MiddlewareConstants
-
-    attr_reader :store
-
     def initialize app, store
       @app = app
       @store = store
@@ -31,7 +30,7 @@ module SecureEscrow
     end
 
     def presenter env
-      Presenter.new(@app, env)
+      Presenter.new @app, @store, env
     end
 
     def handle_presenter e
@@ -42,138 +41,162 @@ module SecureEscrow
       else
         e.serve_response_from_application!
       end
-
-      #if serve_response_from_escrow? env
-        ## No need to call the Rails app if we're serving a response from escrow
-        #serve_response_from_escrow! env
-      #else
-        ## Get the response from the Rails app
-        #call_result = @app.call env
-
-        #if keep_in_escrow? env
-          #store_in_escrow_and_redirect! env, call_result
-        #else
-          #call_result
-        #end
-      #end
-
     end
 
     class Presenter
-      attr_reader :app, :env
+      include MiddlewareConstants
 
-      def initialize app, env
-        @app = app
-        @env = env
+      attr_reader :app, :store, :env
+
+      def initialize app, store, env
+        @app   = app
+        @store = store
+        @env   = env
       end
 
-      def store_response_in_escrow?
-        method = env[REQUEST_METHOD]
-
-        return false unless POST == method
-        h = rails_routes(env).recognize_path env[REQUEST_PATH], method: method
-        h[:escrow]
-      end
-
-      def serve_response_from_escrow? env
+      def serve_response_from_escrow?
         return false unless GET == env[REQUEST_METHOD]
-        id, nonce = escrow_id_and_nonce env
+        id, nonce = escrow_id_and_nonce
         key = escrow_key id
         store.exists key
       end
 
-    def serve_response_from_escrow! env
-      id, nonce = escrow_id_and_nonce env
-      key = escrow_key id
-      value = JSON.parse(store.get key)
-
-      if nonce == value[NONCE]
-        # Destroy the stored value
-        store.del key
-
-        return value[RESPONSE]
-      else
-        # HTTP Status Code 403 - Forbidden
-        return [ 403, {}, [ BAD_NONCE ] ]
+      def store_response_in_escrow?
+        method = env[REQUEST_METHOD]
+        return false unless POST == method
+        h = rails_routes.recognize_path env[REQUEST_PATH], method: method
+        h[:escrow]
       end
-    end
 
-              private
-    def rails_routes env
-      @rails_routes ||= env[RAILS_ROUTES]
-    end
+      def serve_response_from_escrow!
+        id, nonce = escrow_id_and_nonce
+        key = escrow_key id
+        value = JSON.parse(store.get key)
 
-    def store_in_escrow_and_redirect! env, call_result
-      status, header, response = call_result
-      id, nonce = store_in_escrow status, header, response
-      token = "#{id}.#{nonce}"
+        if nonce == value[NONCE]
+          # Destroy the stored value
+          store.del key
 
-      # HTTP Status Code 303 - See Other
-      routes = @app.routes
-      config = @app.config
+          return value[RESPONSE]
+        else
+          # HTTP Status Code 403 - Forbidden
+          return [ 403, {}, [ BAD_NONCE ] ]
+        end
+      end
 
-      redirect_to = routes.url_for(
-        routes.recognize_path(env[REQUEST_PATH], env).merge(
-            protocol: config.insecure_domain_protocol,
+      def store_response_in_escrow_and_redirect!
+        status, header, response = call_result
+        id, nonce = store_in_escrow status, header, response
+        token = "#{id}.#{nonce}"
+
+        # HTTP Status Code 303 - See Other
+        routes = app.routes
+        config = app.config
+
+        redirect_to_options = {
+          protocol: config.insecure_domain_protocol,
+          host:     config.insecure_domain_name,
+          port:     config.insecure_domain_port
+        }
+
+        headers = {}
+        if homogenous_host_names?
+          Rack::Utils.set_cookie_header! headers, DATA_KEY, token
+        else
+          redirect_to_options.merge!(DATA_KEY => token)
+        end
+
+        location = routes.url_for(
+          routes.
+            recognize_path(env[REQUEST_PATH], env).
+            merge(redirect_to_options))
+
+        headers.merge! LOCATION => location
+        return [ 303, headers, [ "Escrowed at #{token}" ] ]
+      end
+
+      def serve_response_from_application!
+        call_result
+      end
+
+      def escrow_id
+        @escrow_id ||= (escrow_id_and_nonce || [])[0]
+      end
+
+      def escrow_nonce
+        @escrow_nonce ||= (escrow_id_and_nonce || [])[1]
+      end
+
+      private
+      # Take a Rack status, header, and response
+      # Serialize the response to a string
+      # Serialize the structure as JSON
+      # Generate a unique id for the data
+      # Generate a nonce for the data
+      # Store in Redis
+      def store_in_escrow status, header, response
+        id = UUID.generate
+        nonce = SecureRandom.hex(4)
+
+        response_body = []
+        response.each { |content| response_body.push(content) }
+        response.close if response.respond_to? :close
+
+        config = app.config
+        routes = app.routes
+
+        # Rewrite redirect to secure domain
+        header[LOCATION] = routes.url_for(
+          routes.recognize_path(header[LOCATION]).merge(
             host:     config.insecure_domain_name,
-            port:     config.insecure_domain_port,
-            escrow:   token
+            protocol: config.insecure_domain_protocol,
+            port:     config.insecure_domain_port
           ))
 
-      return [ 303, { LOCATION => redirect_to }, [ "Escrowed at #{token}" ] ]
-    end
+        value = {
+          NONCE    => nonce,
+          RESPONSE => [ status, header, [ response_body.join ] ]
+        }
 
-    # Take a Rack status, header, and response
-    # Serialize the response to a string
-    # Serialize the structure as JSON
-    # Generate a unique id for the data
-    # Generate a nonce for the data
-    # Store in Redis
-    def store_in_escrow status, header, response
-      id = UUID.generate
-      nonce = SecureRandom.hex(4)
+        # Serialze the nonce and Rack response triplet
+        # and store in Redis
+        key = escrow_key id
+        store.set key, value.to_json
 
-      response_body = []
-      response.each { |content| response_body.push(content) }
-      response.close if response.respond_to? :close
+        # Set TTL on secure response
+        store.expire key, TTL
 
-      config = @app.config
-      routes = @app.routes
+        [ id, nonce ]
+      end
 
-      # Rewrite redirect to secure domain
-      header[LOCATION] = routes.url_for(
-        routes.recognize_path(header[LOCATION]).merge(
-          host:     config.insecure_domain_name,
-          protocol: config.insecure_domain_protocol,
-          port:     config.insecure_domain_port
-        ))
+      def call_result
+        @call_result ||= app.call env
+      end
 
-      value = {
-        NONCE    => nonce,
-        RESPONSE => [ status, header, [ response_body.join ] ]
-      }
+      def rails_routes
+        @rails_routes ||= app.routes
+      end
 
-      # Serialze the nonce and Rack response triplet
-      # and store in Redis
-      key = escrow_key id
-      store.set key, value.to_json
+      def escrow_key id
+        "escrow:#{id}"
+      end
 
-      # Set TTL on secure response
-      store.expire key, TTL
+      def escrow_id_and_nonce
+        data = (homogenous_host_names? ?
+          Rack::Utils.parse_query(env[HTTP_COOKIE], COOKIE_SEPARATOR) :
+          Rack::Utils.parse_query(env[QUERY_STRING]))[DATA_KEY]
 
-      [ id, nonce ]
-    end
+        return unless data
+        match = data.match ESCROW_MATCH
+        return unless match
 
+        match[1..2]
+      end
 
-
-    def escrow_key id
-      "escrow:#{id}"
-    end
-
-    def escrow_id_and_nonce env
-      match = env[QUERY_STRING].match ESCROW_MATCH
-      match && match[1..2]
-    end
+      def homogenous_host_names?
+        config = app.config
+        config.secure_domain_name == config.insecure_domain_name
+      end
 
     end
 
