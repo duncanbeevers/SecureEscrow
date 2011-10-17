@@ -67,6 +67,28 @@ describe 'SecureEscrow::Middleware' do
   end
 
   context 'Presenter' do
+    describe 'serve_response_from_escrow?' do
+      it 'should not serve POSTs' do
+        presenter.env[REQUEST_METHOD] = POST
+        presenter.serve_response_from_escrow?.should be_false
+      end
+
+      it 'should not serve responses where the escrow key is not in the store' do
+        presenter.env[REQUEST_METHOD] = GET
+        set_escrow_cookie presenter, 'id'
+
+        presenter.serve_response_from_escrow?.should be_false
+      end
+
+      it 'should serve responses where the escrow key is in the store' do
+        presenter.env[REQUEST_METHOD] = GET
+        store_in_escrow store, 'id'
+
+        set_escrow_cookie presenter, 'id'
+        presenter.serve_response_from_escrow?.should be_true
+      end
+    end
+
     describe 'store_response_in_escrow?' do
       it 'should not store GETs' do
         presenter.env[REQUEST_METHOD] = GET
@@ -108,9 +130,9 @@ describe 'SecureEscrow::Middleware' do
 
     describe 'serve_response_from_escrow!' do
       it 'should return 403 - Forbidden when nonce does not match' do
-        id = 'id'
-        presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=#{id}.bad-nonce"
-        store.set(presenter.escrow_key(id), ActiveSupport::JSON.encode(NONCE => 'good-nonce', RESPONSE => []))
+        store_in_escrow store, 'id', 'good-nonce', []
+
+        set_escrow_cookie presenter, 'id', 'bad-nonce'
         presenter.serve_response_from_escrow![0].should eq 403
       end
     end
@@ -149,5 +171,16 @@ describe 'SecureEscrow::Middleware' do
     end
   end
 
+end
+
+def set_escrow_cookie presenter, id = 'id', nonce = 'nonce'
+  presenter.env[HTTP_COOKIE] = "%s=%s.%s" % [
+    SecureEscrow::MiddlewareConstants::DATA_KEY,
+    id, nonce
+  ]
+end
+
+def store_in_escrow store, id = 'id', nonce = 'nonce', response = []
+  store.set(presenter.escrow_key(id), ActiveSupport::JSON.encode(NONCE => nonce, RESPONSE => response))
 end
 
