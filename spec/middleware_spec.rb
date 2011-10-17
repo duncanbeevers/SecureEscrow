@@ -187,7 +187,7 @@ describe 'SecureEscrow::Middleware' do
           )
         }
 
-        it 'should recognize escrow id from cookie' do
+        it 'should recognize escrow id and nonce from cookie' do
           set_escrow_cookie presenter, 'id', 'nonce'
 
           presenter.escrow_id.should    eq 'id'
