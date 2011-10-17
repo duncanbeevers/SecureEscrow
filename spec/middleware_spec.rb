@@ -172,7 +172,8 @@ describe 'SecureEscrow::Middleware' do
         }
 
         it 'should recognize escrow id and nonce from query string' do
-          presenter.env[QUERY_STRING] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
+          set_escrow_query_string presenter, 'id', 'nonce'
+
           presenter.escrow_id.should    eq 'id'
           presenter.escrow_nonce.should eq 'nonce'
         end
@@ -187,7 +188,8 @@ describe 'SecureEscrow::Middleware' do
         }
 
         it 'should recognize escrow id from cookie' do
-          presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=id.nonce"
+          set_escrow_cookie presenter, 'id', 'nonce'
+
           presenter.escrow_id.should    eq 'id'
           presenter.escrow_nonce.should eq 'nonce'
         end
@@ -198,14 +200,28 @@ describe 'SecureEscrow::Middleware' do
 
 end
 
+def set_escrow_query_string presenter, id = 'id', nonce = 'nonce'
+  set_escrow_env QUERY_STRING, presenter, id, nonce
+end
+
 def set_escrow_cookie presenter, id = 'id', nonce = 'nonce'
-  presenter.env[HTTP_COOKIE] = "%s=%s.%s" % [
+  set_escrow_env HTTP_COOKIE, presenter, id, nonce
+end
+
+def set_escrow_env key, presenter, id, nonce
+  presenter.env[key] = "%s=%s.%s" % [
     SecureEscrow::MiddlewareConstants::DATA_KEY,
     id, nonce
   ]
 end
 
 def store_in_escrow store, id = 'id', nonce = 'nonce', response = []
-  store.set(presenter.escrow_key(id), ActiveSupport::JSON.encode(NONCE => nonce, RESPONSE => response))
+  store.set(
+    presenter.escrow_key(id),
+    ActiveSupport::JSON.encode(
+      NONCE => nonce,
+      RESPONSE => response
+    )
+  )
 end
 
