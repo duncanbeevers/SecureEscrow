@@ -1,4 +1,10 @@
 class MockRedis
+  # Mock-y things
+  def clear!
+    @values = {}
+  end
+
+  # Redis-y things
   def set key, value
     values[key] = value
   end
@@ -7,8 +13,9 @@ class MockRedis
     values[key]
   end
 
+  private
   def values
-    @values ||= {}
+    @values ||= clear!
   end
 end
 

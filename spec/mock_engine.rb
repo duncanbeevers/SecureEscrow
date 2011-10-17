@@ -24,7 +24,14 @@ class MockEngine
     )
   end
 
+  def routes
+    @routes ||= Routes.new
+  end
+
   class Config < OpenStruct
+  end
+
+  class Routes
   end
 end
 

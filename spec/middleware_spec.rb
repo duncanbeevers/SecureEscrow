@@ -66,9 +66,31 @@ describe 'SecureEscrow::Middleware' do
     end
   end
 
-  context 'SecureEscrow::Middleware::Presenter' do
+  context 'Presenter' do
     it 'should not store GETs' do
       presenter.env[REQUEST_METHOD] = GET
+      presenter.store_response_in_escrow?.should be_false
+    end
+
+    it 'should not store non-existent routes' do
+      presenter.env[REQUEST_METHOD] = POST
+
+      app.routes.should_receive(:recognize_path).
+        once.with(env[REQUEST_PATH], { method: POST }).
+        and_raise(
+          ActionController::RoutingError.new("No route matches #{env[REQUEST_PATH]}")
+        )
+
+      presenter.store_response_in_escrow?.should be_false
+    end
+
+    it 'should not store non-escrow routes' do
+      presenter.env[REQUEST_METHOD] = POST
+
+      app.routes.should_receive(:recognize_path).
+        once.with(env[REQUEST_PATH], { method: POST }).
+        and_return(controller: 'session', action: 'create')
+
       presenter.store_response_in_escrow?.should be_false
     end
 

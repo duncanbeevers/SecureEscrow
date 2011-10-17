@@ -64,8 +64,7 @@ module SecureEscrow
       def store_response_in_escrow?
         method = env[REQUEST_METHOD]
         return false unless POST == method
-        h = rails_routes.recognize_path env[REQUEST_PATH], method: method
-        h[:escrow]
+        recognize_path[:escrow]
       end
 
       def serve_response_from_escrow!
@@ -107,9 +106,7 @@ module SecureEscrow
         end
 
         location = routes.url_for(
-          routes.
-            recognize_path(env[REQUEST_PATH], env).
-            merge(redirect_to_options))
+          recognize_path.merge(redirect_to_options))
 
         headers.merge! LOCATION => location
         return [ 303, headers, [ "Escrowed at #{token}" ] ]
@@ -196,6 +193,17 @@ module SecureEscrow
       def homogenous_host_names?
         config = app.config
         config.secure_domain_name == config.insecure_domain_name
+      end
+
+      def recognize_path
+        begin
+          rails_routes.recognize_path(
+            env[REQUEST_PATH],
+            method: env[REQUEST_METHOD]
+          )
+        rescue ActionController::RoutingError
+          {}
+        end
       end
 
     end
