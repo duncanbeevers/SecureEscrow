@@ -57,6 +57,8 @@ module SecureEscrow
       def serve_response_from_escrow?
         return false unless GET == env[REQUEST_METHOD]
         id, nonce = escrow_id_and_nonce
+        return false unless id
+
         key = escrow_key id
         store.exists key
       end

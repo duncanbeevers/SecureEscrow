@@ -80,6 +80,13 @@ describe 'SecureEscrow::Middleware' do
         presenter.serve_response_from_escrow?.should be_false
       end
 
+      it 'should not check the backing store when no escrow param is present' do
+        presenter.env[REQUEST_METHOD] = GET
+
+        store.should_not_receive(:exists)
+        presenter.serve_response_from_escrow?
+      end
+
       it 'should serve responses where the escrow key is in the store' do
         presenter.env[REQUEST_METHOD] = GET
         store_in_escrow store, 'id'
