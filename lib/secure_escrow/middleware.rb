@@ -127,6 +127,10 @@ module SecureEscrow
         @escrow_nonce ||= (escrow_id_and_nonce || [])[1]
       end
 
+      def escrow_key id
+        "escrow:#{id}"
+      end
+
       private
       # Take a Rack status, header, and response
       # Serialize the response to a string
@@ -175,10 +179,6 @@ module SecureEscrow
 
       def rails_routes
         @rails_routes ||= app.routes
-      end
-
-      def escrow_key id
-        "escrow:#{id}"
       end
 
       def escrow_id_and_nonce

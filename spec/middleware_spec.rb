@@ -103,6 +103,15 @@ describe 'SecureEscrow::Middleware' do
           presenter.escrow_nonce.should == 'nonce'
         end
       end
+
+      describe 'serve_response_from_escrow!' do
+        it 'should return 403 - Forbidden when nonce does not match' do
+          id = 'id'
+          presenter.env[HTTP_COOKIE] = "#{SecureEscrow::MiddlewareConstants::DATA_KEY}=#{id}.bad-nonce"
+          store.set(presenter.escrow_key(id), ActiveSupport::JSON.encode(NONCE => 'good-nonce', RESPONSE => []))
+          presenter.serve_response_from_escrow![0].should == 403
+        end
+      end
     end
   end
 

@@ -3,6 +3,7 @@ require 'spork'
 Spork.prefork do
   require 'rspec'
   require 'pry-remote'
+  require 'active_support/json'
 
   RSpec.configure do |config|
   end
