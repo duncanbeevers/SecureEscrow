@@ -11,6 +11,10 @@ class MockRedis
     values.has_key? key
   end
 
+  def del key
+    values.delete key
+  end
+
   private
   def values
     @values ||= {}

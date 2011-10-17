@@ -142,6 +142,24 @@ describe 'SecureEscrow::Middleware' do
         set_escrow_cookie presenter, 'id', 'bad-nonce'
         presenter.serve_response_from_escrow![0].should eq 403
       end
+
+      it 'should delete the key from the backing store' do
+        store_in_escrow store, 'id'
+        set_escrow_cookie presenter, 'id'
+
+        store.should_receive(:del).
+          once.with(presenter.escrow_key('id'))
+
+        presenter.serve_response_from_escrow!
+      end
+
+      it 'should return the escrowed response' do
+        response = [ 200, {}, [ 'text' ] ]
+        store_in_escrow store, 'id', 'nonce', response
+        set_escrow_cookie presenter, 'id', 'nonce'
+
+        presenter.serve_response_from_escrow!.should == response
+      end
     end
 
     describe 'escrow_id and escrow_nonce' do
