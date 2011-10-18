@@ -212,7 +212,7 @@ describe 'SecureEscrow::Middleware' do
         nonce.should eq 'nonce'
       end
 
-      it 'should store and set expiration on serialized response' do
+      it 'should store serialized response and set expiration' do
         presenter.should_receive(:generate_id_and_nonce).
           once.and_return([ 'id', 'nonce'])
 
