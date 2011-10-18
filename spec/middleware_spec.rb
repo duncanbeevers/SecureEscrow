@@ -212,7 +212,7 @@ describe 'SecureEscrow::Middleware' do
         nonce.should eq 'nonce'
       end
 
-      it 'should store serialized response' do
+      it 'should store and set expiration on serialized response' do
         presenter.should_receive(:generate_id_and_nonce).
           once.and_return([ 'id', 'nonce'])
 
@@ -223,7 +223,10 @@ describe 'SecureEscrow::Middleware' do
           RESPONSE => response
         }.to_json
 
-        store.should_receive(:set).with(key, expected_stored_value)
+        store.should_receive(:set).once.with(key, expected_stored_value)
+        store.should_receive(:expire).
+          once.with(key, SecureEscrow::MiddlewareConstants::TTL)
+
         presenter.store_in_escrow(*response)
       end
 
