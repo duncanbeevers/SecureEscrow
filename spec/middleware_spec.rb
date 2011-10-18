@@ -30,6 +30,20 @@ describe 'SecureEscrow::Middleware' do
         presenter.should_receive(:serve_response_from_escrow!).
           with.once
 
+        presenter.should_not_receive(:redirect_to_response!)
+        presenter.should_not_receive(:store_response_in_escrow_and_redirect!)
+        presenter.should_not_receive(:serve_response_from_application!)
+
+        middleware.handle_presenter presenter
+      end
+
+      it 'should use the response redirect' do
+        presenter.should_receive(:serve_response_from_escrow?).
+          once.and_return(false)
+        presenter.should_receive(:response_is_redirect?).
+          once.and_return(true)
+        presenter.should_receive(:redirect_to_response!).once
+
         presenter.should_not_receive(:store_response_in_escrow_and_redirect!)
         presenter.should_not_receive(:serve_response_from_application!)
 
@@ -39,12 +53,15 @@ describe 'SecureEscrow::Middleware' do
       it 'should store a response in the escrow and redirect' do
         presenter.should_receive(:serve_response_from_escrow?).
           once.and_return(false)
+        presenter.should_receive(:response_is_redirect?).
+          once.and_return(false)
         presenter.should_receive(:store_response_in_escrow?).
           once.and_return(true)
         presenter.should_receive(:store_response_in_escrow_and_redirect!).
           once
 
         presenter.should_not_receive(:serve_response_from_escrow!)
+        presenter.should_not_receive(:redirect_to_response!)
         presenter.should_not_receive(:serve_response_from_application!)
 
         middleware.handle_presenter presenter
@@ -53,12 +70,15 @@ describe 'SecureEscrow::Middleware' do
       it 'should pass-through other requests' do
         presenter.should_receive(:serve_response_from_escrow?).
           once.and_return(false)
+        presenter.should_receive(:response_is_redirect?).
+          once.and_return(false)
         presenter.should_receive(:store_response_in_escrow?).
           once.and_return(false)
         presenter.should_receive(:serve_response_from_application!).
           once
 
         presenter.should_not_receive(:serve_response_from_escrow!)
+        presenter.should_not_receive(:redirect_to_response!)
         presenter.should_not_receive(:store_response_in_escrow_and_redirect!)
 
         middleware.handle_presenter presenter
@@ -93,6 +113,29 @@ describe 'SecureEscrow::Middleware' do
 
         set_escrow_cookie presenter, 'id'
         presenter.serve_response_from_escrow?.should be_true
+      end
+    end
+
+    describe 'response_is_redirect?' do
+      it 'should not include status codes less than 300' do
+        app.should_receive(:call).
+          once.with(env).and_return([ 299, {}, [ '' ] ])
+
+        presenter.response_is_redirect?.should be_false
+      end
+
+      it 'should not include status codes greater than 399' do
+        app.should_receive(:call).
+          once.with(env).and_return([ 400, {}, [ '' ] ])
+
+        presenter.response_is_redirect?.should be_false
+      end
+
+      it 'should include 304' do
+        app.should_receive(:call).
+          once.with(env).and_return([ 304, {}, [ '' ] ])
+
+        presenter.response_is_redirect?.should be_true
       end
     end
 

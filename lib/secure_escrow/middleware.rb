@@ -17,6 +17,7 @@ module SecureEscrow
     RESPONSE         = 'response'
     BAD_NONCE        = 'Bad nonce'
     DATA_KEY         = 'secure_escrow'
+    REDIRECT_CODES   = 300..399
   end
 
   class Middleware
@@ -36,6 +37,8 @@ module SecureEscrow
     def handle_presenter e
       if e.serve_response_from_escrow?
         e.serve_response_from_escrow!
+      elsif e.response_is_redirect?
+        e.redirect_to_response!
       elsif e.store_response_in_escrow?
         e.store_response_in_escrow_and_redirect!
       else
@@ -59,6 +62,11 @@ module SecureEscrow
         return false unless escrow_id
 
         store.exists escrow_key(escrow_id)
+      end
+
+      def response_is_redirect?
+        status, header, response = call_result
+        REDIRECT_CODES.include? status
       end
 
       def store_response_in_escrow?
