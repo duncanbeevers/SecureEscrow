@@ -192,6 +192,15 @@ describe 'SecureEscrow::Middleware' do
       end
     end
 
+    describe 'serve_response_from_application!' do
+      it 'should serve response from application' do
+        response = [ 200, {}, [ '' ] ]
+        app.should_receive(:call).
+          once.with(env).and_return(response)
+        presenter.serve_response_from_application!.should eq response
+      end
+    end
+
     describe 'generate_id_and_nonce' do
       it 'should generate id with UUID and nonce with SecureRandom' do
         UUID.should_receive(:generate).and_return('id')
