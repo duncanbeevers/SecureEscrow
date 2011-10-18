@@ -255,6 +255,8 @@ describe 'SecureEscrow::Middleware' do
           ]
           rewritten_redirect_url = 'boo'
 
+          # This is a fairly large area of interactivity
+          # with ActionDispatch::Routing::RouteSet
           presenter.should_receive(:generate_id_and_nonce).
             once.with.and_return([ 'id', 'nonce'])
 
@@ -279,7 +281,11 @@ describe 'SecureEscrow::Middleware' do
           store.should_receive(:set).
             once.with(key, expected_stored_value)
 
-          presenter.store_in_escrow 303, { LOCATION => original_redirect_url }, [ '' ]
+          presenter.store_in_escrow(
+            303,
+            { LOCATION => original_redirect_url },
+            [ '' ]
+          )
         end
       end
     end
@@ -341,7 +347,7 @@ def store_in_escrow store, id = 'id', nonce = 'nonce', response = []
   store.set(
     presenter.escrow_key(id),
     ActiveSupport::JSON.encode(
-      NONCE => nonce,
+      NONCE    => nonce,
       RESPONSE => response
     )
   )
