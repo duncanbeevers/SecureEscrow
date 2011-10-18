@@ -90,28 +90,11 @@ module SecureEscrow
         id, nonce = store_in_escrow status, header, response
         token = "#{id}.#{nonce}"
 
+        response_headers = { LOCATION => redirect_to_location(token) }
+        set_cookie_token!(response_headers, token) if homogenous_host_names?
+
         # HTTP Status Code 303 - See Other
-        routes = app.routes
-        config = app.config
-
-        redirect_to_options = {
-          protocol: config.insecure_domain_protocol,
-          host:     config.insecure_domain_name,
-          port:     config.insecure_domain_port
-        }
-
-        headers = {}
-        if homogenous_host_names?
-          Rack::Utils.set_cookie_header! headers, DATA_KEY, token
-        else
-          redirect_to_options.merge!(DATA_KEY => token)
-        end
-
-        location = routes.url_for(
-          recognize_path.merge(redirect_to_options))
-
-        headers.merge! LOCATION => location
-        return [ 303, headers, [ "Escrowed at #{token}" ] ]
+        return [ 303, response_headers, [ "Escrowed at #{token}" ] ]
       end
 
       def serve_response_from_application!
@@ -130,7 +113,6 @@ module SecureEscrow
         "escrow:#{id}"
       end
 
-      private
       # Take a Rack status, header, and response
       # Serialize the response to a string
       # Serialize the structure as JSON
@@ -138,23 +120,13 @@ module SecureEscrow
       # Generate a nonce for the data
       # Store in Redis
       def store_in_escrow status, header, response
-        id = UUID.generate
-        nonce = SecureRandom.hex(4)
+        id, nonce = generate_id_and_nonce
 
         response_body = []
         response.each { |content| response_body.push(content) }
         response.close if response.respond_to? :close
 
-        config = app.config
-        routes = app.routes
-
-        # Rewrite redirect to secure domain
-        header[LOCATION] = routes.url_for(
-          routes.recognize_path(header[LOCATION]).merge(
-            host:     config.insecure_domain_name,
-            protocol: config.insecure_domain_protocol,
-            port:     config.insecure_domain_port
-          ))
+        rewrite_headers! header
 
         value = {
           NONCE    => nonce,
@@ -170,6 +142,48 @@ module SecureEscrow
         store.expire key, TTL
 
         [ id, nonce ]
+      end
+
+      def generate_id_and_nonce
+        [ UUID.generate, SecureRandom.hex(4) ]
+      end
+
+      private
+      def set_cookie_token! headers, token
+        Rack::Utils.set_cookie_header!(headers, DATA_KEY, token)
+      end
+
+      def redirect_to_location token
+        routes = app.routes
+        config = app.config
+
+        redirect_to_options = {
+          protocol: config.insecure_domain_protocol,
+          host:     config.insecure_domain_name,
+          port:     config.insecure_domain_port
+        }
+
+        redirect_to_options.merge!(DATA_KEY => token) unless homogenous_host_names?
+
+        routes.url_for(
+          recognize_path.merge(redirect_to_options))
+      end
+
+      def rewrite_headers! header
+        return unless header[LOCATION]
+
+        config = app.config
+        routes = app.routes
+
+        # Rewrite redirect to secure domain
+        header[LOCATION] = routes.url_for(
+          routes.recognize_path(header[LOCATION]).merge(
+            host:     config.insecure_domain_name,
+            protocol: config.insecure_domain_protocol,
+            port:     config.insecure_domain_port
+          ))
+
+        header
       end
 
       def call_result

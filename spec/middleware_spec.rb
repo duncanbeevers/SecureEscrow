@@ -162,6 +162,116 @@ describe 'SecureEscrow::Middleware' do
       end
     end
 
+    describe 'store_response_in_escrow_and_redirect!' do
+      it 'should return 303 - See Other' do
+        presenter.stub!(:store_in_escrow).and_return([ 'id', 'nonce' ])
+        presenter.stub!(:redirect_to_location).and_return('/')
+
+        presenter.store_response_in_escrow_and_redirect![0].should eq 303
+      end
+
+      context 'when insecure_domain_name is different from secure_domain_name' do
+        let(:app) {
+          MockEngine.new(
+            secure_domain_name:   'www.ssl-example.com',
+            insecure_domain_name: 'www.example.com'
+          )
+        }
+      end
+      context 'when insecure_domain_name is the same as secure_domain_name' do
+        it 'should set cookie header with escrow token' do
+          presenter.stub!(:store_in_escrow).and_return([ 'id', 'nonce' ])
+          presenter.stub!(:redirect_to_location).and_return('/')
+
+          set_cookie_header = presenter.
+            store_response_in_escrow_and_redirect![1]['Set-Cookie']
+
+          cookies = Rack::Utils.parse_query(set_cookie_header)
+          cookies[SecureEscrow::MiddlewareConstants::DATA_KEY].should eq 'id.nonce'
+        end
+      end
+    end
+
+    describe 'generate_id_and_nonce' do
+      it 'should generate id with UUID and nonce with SecureRandom' do
+        UUID.should_receive(:generate).and_return('id')
+        SecureRandom.should_receive(:hex).once.with(4).and_return('nonce')
+        presenter.generate_id_and_nonce
+      end
+    end
+
+    describe 'store_in_escrow' do
+      it 'should return generated id and nonce' do
+        presenter.should_receive(:generate_id_and_nonce).
+          once.with.and_return([ 'id', 'nonce' ])
+
+        presenter.stub! :rewrite_headers!
+
+        id, nonce = presenter.store_in_escrow(200, {}, [])
+        id.should eq 'id'
+        nonce.should eq 'nonce'
+      end
+
+      it 'should store serialized response' do
+        presenter.should_receive(:generate_id_and_nonce).
+          once.and_return([ 'id', 'nonce'])
+
+        key = presenter.escrow_key 'id'
+        response = [ 200, {}, [ '' ] ]
+        expected_stored_value = {
+          NONCE    => 'nonce',
+          RESPONSE => response
+        }.to_json
+
+        store.should_receive(:set).with(key, expected_stored_value)
+        presenter.store_in_escrow(*response)
+      end
+
+      context 'when insecure_domain_name is different from secure_domain_name' do
+        it 'should not add Location header when none was present' do
+          presenter.should_receive(:generate_id_and_nonce).
+            once.with.and_return([ 'id', 'nonce' ])
+
+          presenter.store_in_escrow 200, {}, []
+        end
+
+        it 'should rewrite domain of redirect to secure domain' do
+          original_redirect_url = "%s://%s:%s" % [
+            app.config.secure_domain_protocol,
+            app.config.secure_domain_name,
+            app.config.secure_domain_port
+          ]
+          rewritten_redirect_url = 'boo'
+
+          presenter.should_receive(:generate_id_and_nonce).
+            once.with.and_return([ 'id', 'nonce'])
+
+          app.routes.should_receive(:recognize_path).
+            once.with(original_redirect_url).
+            and_return(controller: 'sessions', action: 'create')
+
+          app.routes.should_receive(:url_for).
+            once.with(
+              controller: 'sessions', action: 'create',
+              host:     app.config.insecure_domain_name,
+              protocol: app.config.insecure_domain_protocol,
+              port:     app.config.insecure_domain_port
+            ).and_return(rewritten_redirect_url)
+
+          expected_stored_value = {
+            NONCE    => 'nonce',
+            RESPONSE => [ 303, { LOCATION => rewritten_redirect_url }, [ '' ] ]
+          }.to_json
+
+          key = presenter.escrow_key 'id'
+          store.should_receive(:set).
+            once.with(key, expected_stored_value)
+
+          presenter.store_in_escrow 303, { LOCATION => original_redirect_url }, [ '' ]
+        end
+      end
+    end
+
     describe 'escrow_id and escrow_nonce' do
       context 'when insecure_domain_name is different from secure_domain_name' do
         let(:app) {

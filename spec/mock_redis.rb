@@ -15,6 +15,9 @@ class MockRedis
     values.delete key
   end
 
+  def expire key, ttl
+  end
+
   private
   def values
     @values ||= {}
