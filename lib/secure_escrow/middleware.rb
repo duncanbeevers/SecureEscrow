@@ -147,7 +147,9 @@ module SecureEscrow
 
       private
       def set_cookie_token! headers, token
-        Rack::Utils.set_cookie_header!(headers, DATA_KEY, token)
+        Rack::Utils.set_cookie_header!(headers, DATA_KEY,
+          value: token,
+          httponly: true)
       end
 
       def redirect_to_location token
