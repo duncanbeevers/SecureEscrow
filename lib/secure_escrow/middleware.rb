@@ -56,11 +56,9 @@ module SecureEscrow
 
       def serve_response_from_escrow?
         return false unless GET == env[REQUEST_METHOD]
-        id, nonce = escrow_id_and_nonce
-        return false unless id
+        return false unless escrow_id
 
-        key = escrow_key id
-        store.exists key
+        store.exists escrow_key(escrow_id)
       end
 
       def store_response_in_escrow?
@@ -70,11 +68,10 @@ module SecureEscrow
       end
 
       def serve_response_from_escrow!
-        id, nonce = escrow_id_and_nonce
-        key = escrow_key id
+        key = escrow_key escrow_id
         value = JSON.parse(store.get key)
 
-        if nonce == value[NONCE]
+        if escrow_nonce == value[NONCE]
           # Destroy the stored value
           store.del key
 
@@ -194,6 +191,8 @@ module SecureEscrow
         @rails_routes ||= app.routes
       end
 
+      # TODO: Examine the performance implications of parsing the
+      # Cookie / Query payload this early in the stack
       def escrow_id_and_nonce
         data = (homogenous_host_names? ?
           Rack::Utils.parse_query(env[HTTP_COOKIE], COOKIE_SEPARATOR) :
