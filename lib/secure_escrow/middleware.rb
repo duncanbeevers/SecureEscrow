@@ -123,7 +123,7 @@ module SecureEscrow
         response.each { |content| response_body.push(content) }
         response.close if response.respond_to? :close
 
-        rewrite_headers! header
+        rewrite_location_header! header
 
         value = {
           NONCE    => nonce,
@@ -168,7 +168,7 @@ module SecureEscrow
           recognize_path.merge(redirect_to_options))
       end
 
-      def rewrite_headers! header
+      def rewrite_location_header! header
         return unless header[LOCATION]
 
         config = app.config

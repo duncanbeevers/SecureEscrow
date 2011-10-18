@@ -205,7 +205,7 @@ describe 'SecureEscrow::Middleware' do
         presenter.should_receive(:generate_id_and_nonce).
           once.with.and_return([ 'id', 'nonce' ])
 
-        presenter.stub! :rewrite_headers!
+        presenter.stub! :rewrite_location_header!
 
         id, nonce = presenter.store_in_escrow(200, {}, [])
         id.should eq 'id'
