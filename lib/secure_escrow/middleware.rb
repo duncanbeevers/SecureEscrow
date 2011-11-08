@@ -144,13 +144,10 @@ module SecureEscrow
           RESPONSE => [ status, header, [ response_body.join ] ]
         }
 
-        # Serialze the nonce and Rack response triplet
-        # and store in Redis
+        # Serialze the nonce and Rack response triplet,
+        # store in Redis, and set TTL
         key = escrow_key id
-        store.set key, value.to_json
-
-        # Set TTL on secure response
-        store.expire key, TTL
+        store.setex key, value.to_json, TTL
 
         [ id, nonce ]
       end

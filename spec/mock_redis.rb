@@ -1,4 +1,9 @@
 class MockRedis
+  def setex key, value, ttl
+    set key, value
+    expire key, ttl
+  end
+
   def set key, value
     values[key] = value
   end
