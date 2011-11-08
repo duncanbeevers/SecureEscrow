@@ -12,8 +12,6 @@ Instead of submitting secure actions via XHR, we submit them using a hidden ifra
 by dynamically creating a target iframe and modifying a form's target to submit to
 that iframe.
 
-AJAX cross-domain / protocol 
-
 ## Installation
 Add the following line to your <tt>Gemfile</tt>.
 ````ruby
