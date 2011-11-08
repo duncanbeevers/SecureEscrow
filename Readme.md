@@ -8,9 +8,9 @@ This tool was created for two purposes:
 - Secure authentication from a 3rd party-domain
 
 ## The Solution
-Instead of submitting secure actions via XHR, we submit them using a hidden iframe
-by dynamically creating a target iframe and modifying a form's target to submit to
-that iframe.
+Your Rails application needs very little modification in order to support these secure actions.
+
+Say you have a <tt>#signin</tt> ajax action that is currently insecure. Secure Escrow first helps you generate the same form with its action pointing to a secure domain. Also, instead of submitting the form via XHR, an iframe is dynamically-created and the form's target is set to that iframe. When the submission is received by the Secure Escrow middleware, the request is forwarded along to your Rails application. The response from Rails is then cached and an alternate response is delivered to the client. The client is redirected to GET action on the insecure domain. This action is served by the Secure Escrow middleware, and contains the cached response from the Rails application, leaving your app totally unaware that a redirection has occurred. The response is then parsed and passed back to your registered AJAX handler.
 
 ## Installation
 Add the following line to your <tt>Gemfile</tt>.
