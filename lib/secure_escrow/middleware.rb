@@ -90,6 +90,12 @@ module SecureEscrow
         end
       end
 
+      def redirect_to_response!
+        status, header, response = call_result
+        rewrite_location_header! header
+        [ status, header, response ]
+      end
+
       def store_response_in_escrow_and_redirect!
         status, header, response = call_result
         id, nonce = store_in_escrow status, header, response
@@ -160,7 +166,7 @@ module SecureEscrow
           httponly: true)
       end
 
-      def redirect_to_location token
+      def redirect_to_location token = nil
         routes = app.routes
         config = app.config
 
@@ -170,7 +176,9 @@ module SecureEscrow
           port:     config.insecure_domain_port
         }
 
-        redirect_to_options.merge!(DATA_KEY => token) unless homogenous_host_names?
+        if token && !homogenous_host_names?
+          redirect_to_options.merge!(DATA_KEY => token)
+        end
 
         routes.url_for(
           recognize_path.merge(redirect_to_options))

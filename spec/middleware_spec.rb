@@ -201,7 +201,48 @@ describe 'SecureEscrow::Middleware' do
         store_in_escrow store, 'id', 'nonce', response
         set_escrow_cookie presenter, 'id', 'nonce'
 
-        presenter.serve_response_from_escrow!.should == response
+        presenter.serve_response_from_escrow!.should eq response
+      end
+    end
+
+    describe 'redirect_to_response!' do
+      it 'should use status code from application' do
+        response = [ 315, {}, [ '' ] ]
+        app.should_receive(:call).
+          once.with(env).and_return(response)
+
+        presenter.redirect_to_response!.should eq response
+      end
+
+      it 'should rewrite location' do
+        original_location = "%s://%s:%s/path/" % [
+          app.config.secure_domain_protocol,
+          app.config.secure_domain_name,
+          app.config.secure_domain_port
+        ]
+        expected_location = "%s://%s:%s/path/" % [
+          app.config.insecure_domain_protocol,
+          app.config.insecure_domain_name,
+          app.config.insecure_domain_port
+        ]
+
+        original_response = [ 315, { LOCATION => original_location }, [ '' ] ]
+        app.should_receive(:call).
+          once.with(env).and_return(original_response)
+
+        app.routes.should_receive(:recognize_path).
+          once.with(original_location).
+          and_return(controller: 'sessions', action: 'create')
+        app.routes.should_receive(:url_for).
+          once.with(
+            controller: 'sessions',
+            action:     'create',
+            host:       app.config.insecure_domain_name,
+            protocol:   app.config.insecure_domain_protocol,
+            port:       app.config.insecure_domain_port
+          ).and_return(expected_location)
+
+        presenter.redirect_to_response![1][LOCATION].should eq expected_location
       end
     end
 
