@@ -37,7 +37,8 @@ SecureEscrow has 5 integration points with a Rails application
 Add the SecureEscrow::Middleware around your Rails application. It must be configured with access to a backing key-value store.
 In this example, the <tt>Awesome::Application.config.redis</tt> value is available after the <tt>environment</tt> file has been run.
 
-Example <tt>config.ru</tt>
+Example <tt>config.ru</tt>:
+
 ````ruby
 # This file is used by Rack-based servers to start the application.
 require ::File.expand_path('../config/environment',  __FILE__)
@@ -80,6 +81,7 @@ get    'signout'=> 'sessions#destroy',  as: :destroy_user_session
 
 ### Deliver JavaScript assets
 SecureEscrow integrates in the Rails asset pipeline. Just add the following to your <tt>application.js</tt>.
+
 ````ruby
 // SecureEscrow
 // ======================
