@@ -8,6 +8,7 @@ gem 'actionpack'
 group :development do
   gem 'rspec', '>=2.6.0'
   gem 'spork', '~> 0.9.0.rc9'
+  gem 'rake'
   gem 'guard'
   gem 'rb-fsevent'
   gem 'growl_notify'
@@ -16,16 +17,5 @@ group :development do
   gem 'pry'
   gem 'pry-remote'
   gem 'foreman'
-
-  # Example app support
-  # Sinatra App
-  gem 'sinatra'
-
-  # Rails app
-  gem 'rails'
-  gem 'jquery-rails'
-  gem 'thin'
-  gem 'daemons'
-  gem 'jquery-rails'
 end
 
