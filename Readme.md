@@ -14,10 +14,13 @@ that iframe.
 
 ## Installation
 Add the following line to your <tt>Gemfile</tt>.
+
 ````ruby
 gem 'secure_escrow'
 ````
+
 Update your application's bundle.
+
 ````
 $ bundle install
 ````
