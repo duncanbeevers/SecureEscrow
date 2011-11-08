@@ -92,3 +92,7 @@ View helpers are provided to generate forms that submit to the escrow.
  
 Replace <tt>form_for</tt> with <tt>escrow_form_for</tt> and <tt>form_tag</tt> with <tt>escrow_form_tag</tt>.
 
+## License
+
+MIT
+
