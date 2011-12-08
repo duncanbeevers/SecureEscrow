@@ -19,7 +19,10 @@ module SecureEscrow
       def escrow_form_for record, options = {}, &proc
         options[:html] ||= {}
 
-        stringy_record = String === record || Symbol === record
+        stringy_record = case record
+        when String, Symbol then true
+        else false
+        end
         apply_form_for_options!(record, options) unless stringy_record
 
 
