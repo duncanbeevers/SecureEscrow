@@ -92,6 +92,17 @@ describe 'SecureEscrow::Middleware' do
     end
   end
 
+  context 'configured with an error handler' do
+    let(:error_handler) { ->{} }
+    let(:middleware) { SecureEscrow::Middleware.new app, store, error_handler }
+
+    it 'should call error handler with work' do
+      error_handler.should_receive(:call).
+        once.with(duck_type(:call))
+      middleware.call env
+    end
+  end
+
   context 'Presenter' do
     describe 'serve_response_from_escrow?' do
       it 'should not serve POSTs' do
