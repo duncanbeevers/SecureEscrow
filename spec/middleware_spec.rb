@@ -14,10 +14,16 @@ describe 'SecureEscrow::Middleware' do
     end
 
     it 'should handle_presenter with wrapped environment' do
-      middleware.should_receive(:presenter).with(env).
-        once.and_return(presenter)
-
-      middleware.should_receive(:handle_presenter).with(presenter).once
+      middleware.should_receive(:handle_presenter).
+        with(duck_type(
+          :serve_response_from_escrow?,
+          :serve_response_from_escrow!,
+          :response_is_redirect?,
+          :redirect_to_response!,
+          :store_response_in_escrow?,
+          :store_response_in_escrow_and_redirect!,
+          :serve_response_from_application!
+        )).once
 
       middleware.call(env)
     end
