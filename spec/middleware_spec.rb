@@ -260,6 +260,31 @@ describe 'SecureEscrow::Middleware' do
         presenter.store_response_in_escrow_and_redirect![0].should eq 303
       end
 
+      describe 'headers' do
+        it 'should set Location header to redirect location' do
+          mock_location = mock('redirect_to_location')
+          presenter.should_receive(:redirect_to_location).
+            once.and_return(mock_location)
+
+          headers = presenter.store_response_in_escrow_and_redirect![1]
+          headers['Location'].should eq mock_location
+        end
+
+        it 'should set Location header to redirect location' do
+          mock_content_type = mock('content_type')
+
+          presenter.stub!(
+            redirect_to_location: '/',
+            store_in_escrow: [ 'id', 'nonce' ])
+          
+          presenter.should_receive(:call_result).
+            and_return([ 200, { 'Content-Type' => mock_content_type}, '' ])
+
+          headers = presenter.store_response_in_escrow_and_redirect![1]
+          headers['Content-Type'].should eq mock_content_type
+        end
+      end
+
       context 'when insecure_domain_name is different from secure_domain_name' do
         let(:app) {
           MockEngine.new(

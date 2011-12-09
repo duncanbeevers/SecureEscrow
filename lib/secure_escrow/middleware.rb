@@ -11,6 +11,7 @@ module SecureEscrow
     COOKIE_SEPARATOR = ';'
     RAILS_ROUTES     = 'action_dispatch.routes'
     LOCATION         = 'Location'
+    CONTENT_TYPE     = 'Content-Type'
     ESCROW_MATCH     = /^(.+)\.(.+)$/
     TTL              = 180 # Seconds until proxied response expires
     NONCE            = 'nonce'
@@ -101,7 +102,10 @@ module SecureEscrow
         id, nonce = store_in_escrow status, header, response
         token = "#{id}.#{nonce}"
 
-        response_headers = { LOCATION => redirect_to_location(token) }
+        response_headers = {
+          LOCATION      => redirect_to_location(token),
+          CONTENT_TYPE  => header[CONTENT_TYPE]
+        }
         set_cookie_token!(response_headers, token) if homogenous_host_names?
 
         # HTTP Status Code 303 - See Other
@@ -156,11 +160,8 @@ module SecureEscrow
         [ UUID.generate, SecureRandom.hex(4) ]
       end
 
-      private
-      def set_cookie_token! headers, token
-        Rack::Utils.set_cookie_header!(headers, DATA_KEY,
-          value: token,
-          httponly: true)
+      def call_result
+        @call_result ||= app.call env
       end
 
       def redirect_to_location token = nil
@@ -181,6 +182,13 @@ module SecureEscrow
           recognize_path.merge(redirect_to_options))
       end
 
+      private
+      def set_cookie_token! headers, token
+        Rack::Utils.set_cookie_header!(headers, DATA_KEY,
+          value: token,
+          httponly: true)
+      end
+
       def rewrite_location_header! header
         return unless header[LOCATION]
 
@@ -196,10 +204,6 @@ module SecureEscrow
           ))
 
         header
-      end
-
-      def call_result
-        @call_result ||= app.call env
       end
 
       def rails_routes
