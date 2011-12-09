@@ -21,19 +21,17 @@ module SecureEscrow
   end
 
   class Middleware
-    def initialize app, store, error_handler = nil
-      @app            = app
-      @store          = store
-      @error_handler  = error_handler
+    def initialize app, store
+      @app = app
+      @store = store
     end
 
     def call env
-      presenter = Presenter.new @app, @store, env
-      if @error_handler
-        @error_handler.call -> { handle_presenter presenter }
-      else
-        handle_presenter presenter
-      end
+      handle_presenter presenter(env)
+    end
+
+    def presenter env
+      Presenter.new @app, @store, env
     end
 
     def handle_presenter e
