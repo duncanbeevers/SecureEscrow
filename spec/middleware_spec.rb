@@ -393,8 +393,8 @@ describe 'SecureEscrow::Middleware' do
           }.to_json
 
           key = presenter.escrow_key 'id'
-          store.should_receive(:set).
-            once.with(key, expected_stored_value)
+          store.should_receive(:setex).
+            once.with(key, TTL, expected_stored_value)
 
           presenter.store_in_escrow(
             303,

@@ -151,7 +151,8 @@ module SecureEscrow
         # Serialze the nonce and Rack response triplet,
         # store in Redis, and set TTL
         key = escrow_key id
-        store.setex key, value.to_json, TTL
+
+        store.setex key, TTL, value.to_json
 
         [ id, nonce ]
       end
