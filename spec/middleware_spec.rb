@@ -1,7 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'spec_helper'))
 include SecureEscrow::MiddlewareConstants
 
-describe 'SecureEscrow::Middleware' do
+describe SecureEscrow::Middleware do
   let(:app) { MockEngine.new }
   let(:store) { MockRedis.new }
   let(:middleware) { SecureEscrow::Middleware.new app, store }
