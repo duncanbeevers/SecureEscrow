@@ -167,12 +167,12 @@ module SecureEscrow
 
       def redirect_to_location token = nil
         routes = app.routes
-        config = app.config
+        config = app.config.secure_escrow
 
         redirect_to_options = {
-          protocol: config.insecure_domain_protocol,
-          host:     config.insecure_domain_name,
-          port:     config.insecure_domain_port
+          protocol: config[:insecure_domain_protocol] || request.protocol,
+          host:     config[:insecure_domain_name]     || request.host,
+          port:     config[:insecure_domain_port]     || request.port,
         }
 
         if token && !homogenous_host_names?
@@ -193,15 +193,15 @@ module SecureEscrow
       def rewrite_location_header! header
         return unless header[LOCATION]
 
-        config = app.config
+        config = app.config.secure_escrow
         routes = app.routes
 
         # Rewrite redirect to secure domain
         header[LOCATION] = routes.url_for(
           routes.recognize_path(header[LOCATION]).merge(
-            host:     config.insecure_domain_name,
-            protocol: config.insecure_domain_protocol,
-            port:     config.insecure_domain_port
+            host:     config[:insecure_domain_name],
+            protocol: config[:insecure_domain_protocol],
+            port:     config[:insecure_domain_port],
           ))
 
         header
@@ -226,8 +226,8 @@ module SecureEscrow
       end
 
       def homogenous_host_names?
-        config = app.config
-        config.secure_domain_name == config.insecure_domain_name
+        config = app.config.secure_escrow
+        config[:secure_domain_name] == config[:insecure_domain_name]
       end
 
       def recognize_path

@@ -221,15 +221,16 @@ describe SecureEscrow::Middleware do
       end
 
       it 'should rewrite location' do
+        config = app.config.secure_escrow
         original_location = "%s://%s:%s/path/" % [
-          app.config.secure_domain_protocol,
-          app.config.secure_domain_name,
-          app.config.secure_domain_port
+          config[:secure_domain_protocol],
+          config[:secure_domain_name],
+          config[:secure_domain_port],
         ]
         expected_location = "%s://%s:%s/path/" % [
-          app.config.insecure_domain_protocol,
-          app.config.insecure_domain_name,
-          app.config.insecure_domain_port
+          config[:insecure_domain_protocol],
+          config[:insecure_domain_name],
+          config[:insecure_domain_port],
         ]
 
         original_response = [ 315, { LOCATION => original_location }, [ '' ] ]
@@ -243,9 +244,9 @@ describe SecureEscrow::Middleware do
           once.with(
             controller: 'sessions',
             action:     'create',
-            host:       app.config.insecure_domain_name,
-            protocol:   app.config.insecure_domain_protocol,
-            port:       app.config.insecure_domain_port
+            host:       config[:insecure_domain_name],
+            protocol:   config[:insecure_domain_protocol],
+            port:       config[:insecure_domain_port],
           ).and_return(expected_location)
 
         presenter.redirect_to_response![1][LOCATION].should eq expected_location
@@ -363,10 +364,11 @@ describe SecureEscrow::Middleware do
         end
 
         it 'should rewrite domain of redirect to secure domain' do
+          config = app.config.secure_escrow
           original_redirect_url = "%s://%s:%s" % [
-            app.config.secure_domain_protocol,
-            app.config.secure_domain_name,
-            app.config.secure_domain_port
+            config[:secure_domain_protocol],
+            config[:secure_domain_name],
+            config[:secure_domain_port],
           ]
           rewritten_redirect_url = 'boo'
 
@@ -382,9 +384,9 @@ describe SecureEscrow::Middleware do
           app.routes.should_receive(:url_for).
             once.with(
               controller: 'sessions', action: 'create',
-              host:     app.config.insecure_domain_name,
-              protocol: app.config.insecure_domain_protocol,
-              port:     app.config.insecure_domain_port
+              host:     config[:insecure_domain_name],
+              protocol: config[:insecure_domain_protocol],
+              port:     config[:insecure_domain_port],
             ).and_return(rewritten_redirect_url)
 
           expected_stored_value = {

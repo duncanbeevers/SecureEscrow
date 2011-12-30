@@ -37,14 +37,14 @@ module SecureEscrow
       def escrow_options options
         # Rewrite URL to point to secure domain
         app = Rails.application
-        config = app.config
+        config = app.config.secure_escrow
 
         submission_url = controller.url_for(
           app.routes.recognize_path(options[:url]).
             merge(
-              host:     config.secure_domain_name,
-              protocol: config.secure_domain_protocol,
-              port:     config.secure_domain_port
+              host:     config[:secure_domain_name]     || request.host,
+              protocol: config[:secure_domain_protocol] || request.protocol,
+              port:     config[:secure_domain_port]     || request.port,
             ))
 
         options[:url] = submission_url
