@@ -41,7 +41,12 @@ In this example, the <tt>Awesome::Application.config.redis</tt> value is availab
 Example <tt>config/initializers/secure_escrow.rb</tt>:
 
 ````ruby
-Awesome::Application.middleware.insert_before Rack::Lock, SecureEscrow::Middleware, Awesome::Application, Awesome::Application.config.redis
+Awesome::Application.middleware.insert_before(
+  Rack::Lock,
+  SecureEscrow::Middleware,
+  Awesome::Application,
+  Awesome::Application.config.redis
+)
 ````
 
 ### Configure Domain Information
