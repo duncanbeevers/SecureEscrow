@@ -2,10 +2,11 @@ require File.expand_path(File.join(File.dirname(__FILE__), 'spec_helper'))
 include SecureEscrow::MiddlewareConstants
 
 describe SecureEscrow::Middleware do
-  let(:app) { MockEngine.new }
+  let(:rack_app) { MockRackApp.new }
+  let(:rails_app) { MockEngine.new }
   let(:store) { MockRedis.new }
-  let(:middleware) { SecureEscrow::Middleware.new app, store }
-  let(:presenter) { SecureEscrow::Middleware::Presenter.new app, store, env }
+  let(:middleware) { SecureEscrow::Middleware.new rack_app, rails_app, store }
+  let(:presenter) { SecureEscrow::Middleware::Presenter.new rack_app, rails_app, store, env }
   let(:env) { {} }
 
   context 'as a Rack application' do
@@ -124,21 +125,21 @@ describe SecureEscrow::Middleware do
 
     describe 'response_is_redirect?' do
       it 'should not include status codes less than 300' do
-        app.should_receive(:call).
+        rack_app.should_receive(:call).
           once.with(env).and_return([ 299, {}, [ '' ] ])
 
         presenter.response_is_redirect?.should be_false
       end
 
       it 'should not include status codes greater than 399' do
-        app.should_receive(:call).
+        rack_app.should_receive(:call).
           once.with(env).and_return([ 400, {}, [ '' ] ])
 
         presenter.response_is_redirect?.should be_false
       end
 
       it 'should include 304' do
-        app.should_receive(:call).
+        rack_app.should_receive(:call).
           once.with(env).and_return([ 304, {}, [ '' ] ])
 
         presenter.response_is_redirect?.should be_true
@@ -154,7 +155,7 @@ describe SecureEscrow::Middleware do
       it 'should not store non-existent routes' do
         presenter.env[REQUEST_METHOD] = POST
 
-        app.routes.should_receive(:recognize_path).
+        rails_app.routes.should_receive(:recognize_path).
           once.with(env[REQUEST_PATH], { method: POST }).
           and_raise(
             ActionController::RoutingError.new("No route matches #{env[REQUEST_PATH]}")
@@ -166,7 +167,7 @@ describe SecureEscrow::Middleware do
       it 'should not store non-escrow routes' do
         presenter.env[REQUEST_METHOD] = POST
 
-        app.routes.should_receive(:recognize_path).
+        rails_app.routes.should_receive(:recognize_path).
           once.with(env[REQUEST_PATH], { method: POST }).
           and_return(controller: 'session', action: 'create')
 
@@ -176,7 +177,7 @@ describe SecureEscrow::Middleware do
       it 'should store escrow routes' do
         presenter.env[REQUEST_METHOD] = POST
 
-        app.routes.should_receive(:recognize_path).
+        rails_app.routes.should_receive(:recognize_path).
           once.with(env[REQUEST_PATH], { method: POST }).
           and_return(controller: 'session', action: 'create', escrow: true)
 
@@ -214,14 +215,14 @@ describe SecureEscrow::Middleware do
     describe 'redirect_to_response!' do
       it 'should use status code from application' do
         response = [ 315, {}, [ '' ] ]
-        app.should_receive(:call).
+        rack_app.should_receive(:call).
           once.with(env).and_return(response)
 
         presenter.redirect_to_response!.should eq response
       end
 
       it 'should rewrite location' do
-        config = app.config.secure_escrow
+        config = rails_app.config.secure_escrow
         original_location = "%s://%s:%s/path/" % [
           config[:secure_domain_protocol],
           config[:secure_domain_name],
@@ -234,13 +235,13 @@ describe SecureEscrow::Middleware do
         ]
 
         original_response = [ 315, { LOCATION => original_location }, [ '' ] ]
-        app.should_receive(:call).
+        rack_app.should_receive(:call).
           once.with(env).and_return(original_response)
 
-        app.routes.should_receive(:recognize_path).
+        rails_app.routes.should_receive(:recognize_path).
           once.with(original_location).
           and_return(controller: 'sessions', action: 'create')
-        app.routes.should_receive(:url_for).
+        rails_app.routes.should_receive(:url_for).
           once.with(
             controller: 'sessions',
             action:     'create',
@@ -311,7 +312,7 @@ describe SecureEscrow::Middleware do
     describe 'serve_response_from_application!' do
       it 'should serve response from application' do
         response = [ 200, {}, [ '' ] ]
-        app.should_receive(:call).
+        rack_app.should_receive(:call).
           once.with(env).and_return(response)
         presenter.serve_response_from_application!.should eq response
       end
@@ -364,7 +365,7 @@ describe SecureEscrow::Middleware do
         end
 
         it 'should rewrite domain of redirect to secure domain' do
-          config = app.config.secure_escrow
+          config = rails_app.config.secure_escrow
           original_redirect_url = "%s://%s:%s" % [
             config[:secure_domain_protocol],
             config[:secure_domain_name],
@@ -377,11 +378,11 @@ describe SecureEscrow::Middleware do
           presenter.should_receive(:generate_id_and_nonce).
             once.with.and_return([ 'id', 'nonce'])
 
-          app.routes.should_receive(:recognize_path).
+          rails_app.routes.should_receive(:recognize_path).
             once.with(original_redirect_url).
             and_return(controller: 'sessions', action: 'create')
 
-          app.routes.should_receive(:url_for).
+          rails_app.routes.should_receive(:url_for).
             once.with(
               controller: 'sessions', action: 'create',
               host:     config[:insecure_domain_name],
@@ -409,7 +410,7 @@ describe SecureEscrow::Middleware do
 
     describe 'escrow_id and escrow_nonce' do
       context 'when insecure_domain_name is different from secure_domain_name' do
-        let(:app) {
+        let(:rails_app) {
           MockEngine.new(
             secure_domain_name:   'www.ssl-example.com',
             insecure_domain_name: 'www.example.com'

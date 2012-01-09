@@ -16,5 +16,6 @@ Spork.each_run do
   # Load mocks
   require 'mock_engine'
   require 'mock_redis'
+  require 'mock_rack_app'
 end
 

@@ -22,9 +22,10 @@ module SecureEscrow
   end
 
   class Middleware
-    def initialize app, store
-      @app = app
-      @store = store
+    def initialize next_app, rails_app, store
+      @next_app   = next_app
+      @rails_app  = rails_app
+      @store      = store
     end
 
     def call env
@@ -32,7 +33,7 @@ module SecureEscrow
     end
 
     def presenter env
-      Presenter.new @app, @store, env
+      Presenter.new @next_app, @rails_app, @store, env
     end
 
     def handle_presenter e
@@ -50,12 +51,13 @@ module SecureEscrow
     class Presenter
       include MiddlewareConstants
 
-      attr_reader :app, :store, :env
+      attr_reader :next_app, :rails_app, :store, :env
 
-      def initialize app, store, env
-        @app   = app
-        @store = store
-        @env   = env
+      def initialize next_app, rails_app, store, env
+        @next_app   = next_app
+        @rails_app  = rails_app
+        @store      = store
+        @env        = env
       end
 
       def serve_response_from_escrow?
@@ -162,13 +164,10 @@ module SecureEscrow
       end
 
       def call_result
-        @call_result ||= app.call env
+        @call_result ||= next_app.call env
       end
 
       def redirect_to_location token = nil
-        routes = app.routes
-        config = app.config.secure_escrow
-
         redirect_to_options = {
           protocol: config[:insecure_domain_protocol] || request.protocol,
           host:     config[:insecure_domain_name]     || request.host,
@@ -184,6 +183,10 @@ module SecureEscrow
       end
 
       private
+      def config
+        @config ||= rails_app.config.secure_escrow
+      end
+
       def set_cookie_token! headers, token
         Rack::Utils.set_cookie_header!(headers, DATA_KEY,
           value: token,
@@ -192,9 +195,6 @@ module SecureEscrow
 
       def rewrite_location_header! header
         return unless header[LOCATION]
-
-        config = app.config.secure_escrow
-        routes = app.routes
 
         # Rewrite redirect to secure domain
         header[LOCATION] = routes.url_for(
@@ -207,8 +207,8 @@ module SecureEscrow
         header
       end
 
-      def rails_routes
-        @rails_routes ||= app.routes
+      def routes
+        @routes ||= rails_app.routes
       end
 
       # TODO: Examine the performance implications of parsing the
@@ -226,13 +226,12 @@ module SecureEscrow
       end
 
       def homogenous_host_names?
-        config = app.config.secure_escrow
         config[:secure_domain_name] == config[:insecure_domain_name]
       end
 
       def recognize_path
         begin
-          rails_routes.recognize_path(
+          routes.recognize_path(
             env[REQUEST_PATH],
             method: env[REQUEST_METHOD]
           )
