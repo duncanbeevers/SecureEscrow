@@ -82,7 +82,7 @@ get    'signout'=> 'sessions#destroy',  as: :destroy_user_session
 ### Deliver JavaScript assets
 SecureEscrow integrates in the Rails asset pipeline. Just add the following to your <tt>application.js</tt>.
 
-````ruby
+````javascript
 // SecureEscrow
 // ======================
 //= require secure_escrow
