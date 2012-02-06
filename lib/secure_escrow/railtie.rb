@@ -4,17 +4,19 @@ require "action_pack"
 module SecureEscrow
   module Railtie
     module Routing
-      def escrow options, &block
+      def escrow *args, &block
+        options = args.extract_options!
         defaults = options[:defaults] || {}
         defaults[:escrow] = true
-        post options.merge(defaults), &block
+        args.push options
+        post *args, &block
       end
     end
 
     module ActionViewHelper
       DATA_ESCROW = 'data-escrow'
       IFRAME = 'iframe'
-      POST   = 'post'
+      POST   = 'POST'
 
       def escrow_form_for record, options = {}, &proc
         options[:html] ||= {}
@@ -26,21 +28,21 @@ module SecureEscrow
         apply_form_for_options!(record, options) unless stringy_record
 
 
-        form_for record, escrow_options(options), &proc
+        form_for record, escrow_options(options, POST), &proc
       end
 
       def escrow_form_tag url_for_options = {}, options = {}, &block
-        form_tag url_for_options, escrow_options(options), &block
+        form_tag url_for_options, escrow_options(options, POST), &block
       end
 
       private
-      def escrow_options options
+      def escrow_options options, method
         # Rewrite URL to point to secure domain
         app = Rails.application
         config = app.config.secure_escrow
 
         submission_url = controller.url_for(
-          app.routes.recognize_path(options[:url]).
+          app.routes.recognize_path(options[:url], method: method).
             merge(
               host:     config[:secure_domain_name]     || request.host,
               protocol: config[:secure_domain_protocol] || request.protocol,
