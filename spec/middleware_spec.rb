@@ -441,10 +441,7 @@ describe SecureEscrow::Middleware do
         end
 
         it 'should select first suitable escrow key from cookie' do
-          presenter.env[HTTP_COOKIE] = "%s=%s.%s; %s=%s.%s" % [
-            SecureEscrow::MiddlewareConstants::DATA_KEY, "A", "B",
-            SecureEscrow::MiddlewareConstants::DATA_KEY, "C", "D"
-          ]
+          set_multi_escrow_cookie presenter, "A", "B", "C", "D"
 
           presenter.escrow_id.should    eq "A"
           presenter.escrow_nonce.should eq "B"
@@ -462,6 +459,13 @@ end
 
 def set_escrow_cookie presenter, id = 'id', nonce = 'nonce'
   set_escrow_env HTTP_COOKIE, presenter, id, nonce
+end
+
+def set_multi_escrow_cookie presenter, id1 = 'id1', nonce1 = 'nonce1', id2 = 'id2', nonce2 = 'nonce2'
+  presenter.env[HTTP_COOKIE] = "%s=%s.%s; %s=%s.%s" % [
+    SecureEscrow::MiddlewareConstants::DATA_KEY, id1, nonce1,
+    SecureEscrow::MiddlewareConstants::DATA_KEY, id2, nonce2
+  ]
 end
 
 def set_escrow_env key, presenter, id, nonce
