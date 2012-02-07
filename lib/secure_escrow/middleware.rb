@@ -9,6 +9,7 @@ module SecureEscrow
     POST             = 'POST'
     GET              = 'GET'
     COOKIE_SEPARATOR = ';'
+    EXPIRE_COOKIE    = Time.gm(1979, 1, 1)
     RAILS_ROUTES     = 'action_dispatch.routes'
     LOCATION         = 'Location'
     CONTENT_TYPE     = 'Content-Type'
@@ -86,7 +87,12 @@ module SecureEscrow
           # Destroy the stored value
           store.del key
 
-          return value[RESPONSE]
+          status, headers, body = value[RESPONSE]
+          json = { status: status, body: body.join.to_s }.to_json
+          headers[CONTENT_TYPE] = "text/html; charset=utf-8"
+          expire_cookie_token!(headers)
+
+          [ 200, headers, [ "<html><body><script id=\"response\" type=\"text/x-json\">#{json}</script></body></html>" ] ]
         else
           # HTTP Status Code 403 - Forbidden
           return [ 403, {}, [ BAD_NONCE ] ]
@@ -188,9 +194,16 @@ module SecureEscrow
       end
 
       def set_cookie_token! headers, token
-        Rack::Utils.set_cookie_header!(headers, DATA_KEY,
+        Rack::Utils.set_cookie_header! headers, DATA_KEY,
           value: token,
-          httponly: true)
+          httponly: true
+      end
+
+      def expire_cookie_token! headers
+        Rack::Utils.set_cookie_header! headers, DATA_KEY,
+          value: "",
+          httponly: true,
+          expires: EXPIRE_COOKIE
       end
 
       def rewrite_location_header! header

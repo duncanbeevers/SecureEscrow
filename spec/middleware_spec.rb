@@ -203,14 +203,49 @@ describe SecureEscrow::Middleware do
         presenter.serve_response_from_escrow!
       end
 
-      it 'should return the escrowed response' do
-        response = [ 200, {}, [ 'text' ] ]
+      it 'should deliver the response with status code 200' do
+        response = [ 403, {}, [ 'text' ] ]
         store_in_escrow store, 'id', 'nonce', response
         set_escrow_cookie presenter, 'id', 'nonce'
 
-        presenter.serve_response_from_escrow!.should eq response
+        status, headers, body = presenter.serve_response_from_escrow!
+        status.should eq 200
       end
-    end
+
+      it 'should deliver the headers with content-type text/html; charset=utf-8' do
+        response = [ 403, {}, [ 'text' ] ]
+        store_in_escrow store, 'id', 'nonce', response
+        set_escrow_cookie presenter, 'id', 'nonce'
+
+        status, headers, body = presenter.serve_response_from_escrow!
+        headers['Content-Type'].should eq "text/html; charset=utf-8"
+      end
+
+      it 'should wrap the response in html and json' do
+        response = [ 403, {}, [ 'text' ] ]
+        store_in_escrow store, 'id', 'nonce', response
+        set_escrow_cookie presenter, 'id', 'nonce'
+
+        json_representation = "{\"status\":403,\"body\":\"text\"}"
+
+        status, headers, body = presenter.serve_response_from_escrow!
+        body.join.should eq "<html><body><script id=\"response\" type=\"text/x-json\">#{json_representation}</script></body></html>"
+      end
+
+      it 'should delete the secure escrow cookie' do
+        store_in_escrow store, 'id', 'nonce', [
+          200, {
+            "Set-Cookie" => "_everloop_session=persists"
+          },
+          [ "" ]
+        ]
+
+        set_escrow_cookie presenter, 'id', 'nonce'
+
+        status, headers, body = presenter.serve_response_from_escrow!
+        headers["Set-Cookie"].should eq "_everloop_session=persists\nsecure_escrow=; expires=Mon, 01-Jan-1979 00:00:00 GMT; HttpOnly"
+      end
+   end
 
     describe 'redirect_to_response!' do
       it 'should use status code from application' do
