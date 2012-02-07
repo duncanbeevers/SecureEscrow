@@ -475,7 +475,7 @@ def set_escrow_env key, presenter, id, nonce
   ]
 end
 
-def store_in_escrow store, id = 'id', nonce = 'nonce', response = []
+def store_in_escrow store, id = 'id', nonce = 'nonce', response = [ 200, {}, [ "" ] ]
   store.set(
     presenter.escrow_key(id),
     ActiveSupport::JSON.encode(
