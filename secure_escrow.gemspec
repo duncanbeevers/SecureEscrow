@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.version     = SecureEscrow::VERSION
   s.authors     = ["Duncan Beevers"]
   s.email       = ["duncan@dweebd.com"]
-  s.homepage    = ""
+  s.homepage    = "https://github.com/duncanbeevers/SecureEscrow"
   s.summary     = "Secure AJAX-style actions for Rails applications"
   s.description = "SecureEscrow provides a content proxy for Rails applications allowing POSTing to secure actions from insecure domains without full-page refreshes"
 
