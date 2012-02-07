@@ -155,11 +155,8 @@ describe SecureEscrow::Middleware do
       it 'should not store non-existent routes' do
         presenter.env[REQUEST_METHOD] = POST
 
-        rails_app.routes.should_receive(:recognize_path).
-          once.with(env[REQUEST_PATH], { method: POST }).
-          and_raise(
-            ActionController::RoutingError.new("No route matches #{env[REQUEST_PATH]}")
-          )
+        rails_app.routes.stub!(:recognize_path).
+          and_raise(ActionController::RoutingError.new("No route matches #{env[REQUEST_PATH]}"))
 
         presenter.store_response_in_escrow?.should be_false
       end
@@ -172,6 +169,26 @@ describe SecureEscrow::Middleware do
           and_return(controller: 'session', action: 'create')
 
         presenter.store_response_in_escrow?.should be_false
+      end
+
+      describe 'configured not to check for escrowable routes' do
+        before(:each) do
+          rails_app.config.secure_escrow[:allow_non_escrow_routes] = true
+        end
+
+        it 'should store https existent, non-escrow routes' do
+          presenter.env[REQUEST_METHOD] = POST
+
+          presenter.store_response_in_escrow?.should be_true
+        end
+
+        it 'should not store non-existent routes' do
+          presenter.env[REQUEST_METHOD] = POST
+          rails_app.routes.stub!(:recognize_path).
+            and_raise(ActionController::RoutingError.new("No route matches #{env[REQUEST_PATH]}"))
+
+          presenter.store_response_in_escrow?.should be_false
+        end
       end
 
       it 'should store escrow routes' do

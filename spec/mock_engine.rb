@@ -32,6 +32,9 @@ class MockEngine
   end
 
   class Routes
+    def recognize_path path, options = {}
+      {}
+    end
   end
 end
 

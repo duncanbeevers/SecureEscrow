@@ -74,9 +74,11 @@ module SecureEscrow
       end
 
       def store_response_in_escrow?
-        method = env[REQUEST_METHOD]
-        return false unless POST == method
-        recognize_path[:escrow]
+        return false unless POST == env[REQUEST_METHOD]
+        recognized = recognize_path
+        config[:allow_non_escrow_routes] ?
+          recognized :
+          recognized && recognized[:escrow]
       end
 
       def serve_response_from_escrow!
@@ -251,7 +253,6 @@ module SecureEscrow
             method: env[REQUEST_METHOD]
           )
         rescue ActionController::RoutingError
-          {}
         end
       end
 
