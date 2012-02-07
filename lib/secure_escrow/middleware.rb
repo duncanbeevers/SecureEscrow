@@ -13,7 +13,7 @@ module SecureEscrow
     RAILS_ROUTES     = 'action_dispatch.routes'
     LOCATION         = 'Location'
     CONTENT_TYPE     = 'Content-Type'
-    JSON_CONTENT     = 'application/json'
+    JSON_CONTENT     = /^application\/json/
     ESCROW_MATCH     = /^(.+)\.(.+)$/
     TTL              = 180 # Seconds until proxied response expires
     NONCE            = 'nonce'
@@ -94,7 +94,7 @@ module SecureEscrow
 
           status, headers, body = value[RESPONSE]
 
-          if JSON_CONTENT == headers[CONTENT_TYPE]
+          if headers[CONTENT_TYPE] && JSON_CONTENT.match(headers[CONTENT_TYPE])
             body = [
               "<html><body><script id=\"response\" type=\"text/x-json\">%s</script></body></html>" %
               { status: status, body: body.join.to_s }.to_json

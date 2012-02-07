@@ -248,8 +248,8 @@ describe SecureEscrow::Middleware do
         end
       end
 
-      context 'when the response type is application/json' do
-        let(:response_headers) { { 'Content-Type' => 'application/json' } }
+      context 'when the response type is application/json; charset=utf-8' do
+        let(:response_headers) { { 'Content-Type' => 'application/json; charset=utf-8' } }
         it 'should deliver the response with status code 200' do
           response = [ 403, response_headers, [ 'text' ] ]
           store_in_escrow store, 'id', 'nonce', response
