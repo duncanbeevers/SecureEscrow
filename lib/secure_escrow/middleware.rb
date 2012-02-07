@@ -214,9 +214,11 @@ module SecureEscrow
       # TODO: Examine the performance implications of parsing the
       # Cookie / Query payload this early in the stack
       def escrow_id_and_nonce
-        data = (homogenous_host_names? ?
+        data = Array((homogenous_host_names? ?
           Rack::Utils.parse_query(env[HTTP_COOKIE], COOKIE_SEPARATOR) :
-          Rack::Utils.parse_query(env[QUERY_STRING]))[DATA_KEY]
+          Rack::Utils.parse_query(env[QUERY_STRING]))[DATA_KEY]).find do |e|
+          e.match ESCROW_MATCH
+        end
 
         return unless data
         match = data.match ESCROW_MATCH

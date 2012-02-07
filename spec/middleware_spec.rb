@@ -439,6 +439,16 @@ describe SecureEscrow::Middleware do
           presenter.escrow_id.should    eq 'id'
           presenter.escrow_nonce.should eq 'nonce'
         end
+
+        it 'should select first suitable escrow key from cookie' do
+          presenter.env[HTTP_COOKIE] = "%s=%s.%s; %s=%s.%s" % [
+            SecureEscrow::MiddlewareConstants::DATA_KEY, "A", "B",
+            SecureEscrow::MiddlewareConstants::DATA_KEY, "C", "D"
+          ]
+
+          presenter.escrow_id.should    eq "A"
+          presenter.escrow_nonce.should eq "B"
+        end
       end
 
     end
