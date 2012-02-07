@@ -8,6 +8,7 @@ module SecureEscrow
         options = args.extract_options!
         defaults = options[:defaults] || {}
         defaults[:escrow] = true
+        options[:defaults] = defaults
         args.push options
         post *args, &block
       end
