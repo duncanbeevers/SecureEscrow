@@ -23,10 +23,11 @@ module SecureEscrow
   end
 
   class Middleware
-    def initialize next_app, rails_app, store
+    def initialize next_app, rails_app, config
       @next_app   = next_app
       @rails_app  = rails_app
-      @store      = store
+      @config     = config
+      @store      = config[:store]
     end
 
     def call env
@@ -34,7 +35,7 @@ module SecureEscrow
     end
 
     def presenter env
-      Presenter.new @next_app, @rails_app, @store, env
+      Presenter.new @next_app, @rails_app, @config, env
     end
 
     def handle_presenter e
@@ -52,12 +53,13 @@ module SecureEscrow
     class Presenter
       include MiddlewareConstants
 
-      attr_reader :next_app, :rails_app, :store, :env
+      attr_reader :next_app, :rails_app, :store, :config, :env
 
-      def initialize next_app, rails_app, store, env
+      def initialize next_app, rails_app, config, env
         @next_app   = next_app
         @rails_app  = rails_app
-        @store      = store
+        @config     = config
+        @store      = config[:store]
         @env        = env
       end
 
@@ -177,9 +179,9 @@ module SecureEscrow
 
       def redirect_to_location token = nil
         redirect_to_options = {
-          protocol: config[:insecure_domain_protocol] || request.protocol,
-          host:     config[:insecure_domain_name]     || request.host,
-          port:     config[:insecure_domain_port]     || request.port,
+          protocol: rails_config[:insecure_domain_protocol] || request.protocol,
+          host:     rails_config[:insecure_domain_name]     || request.host,
+          port:     rails_config[:insecure_domain_port]     || request.port,
         }
 
         if token && !homogenous_host_names?
@@ -191,8 +193,8 @@ module SecureEscrow
       end
 
       private
-      def config
-        @config ||= rails_app.config.secure_escrow
+      def rails_config
+        @rails_config ||= rails_app.config.secure_escrow
       end
 
       def set_cookie_token! headers, token
@@ -214,9 +216,9 @@ module SecureEscrow
         # Rewrite redirect to secure domain
         header[LOCATION] = routes.url_for(
           routes.recognize_path(header[LOCATION]).merge(
-            host:     config[:insecure_domain_name],
-            protocol: config[:insecure_domain_protocol],
-            port:     config[:insecure_domain_port],
+            host:     rails_config[:insecure_domain_name],
+            protocol: rails_config[:insecure_domain_protocol],
+            port:     rails_config[:insecure_domain_port],
           ))
 
         header
@@ -243,7 +245,7 @@ module SecureEscrow
       end
 
       def homogenous_host_names?
-        config[:secure_domain_name] == config[:insecure_domain_name]
+        rails_config[:secure_domain_name] == rails_config[:insecure_domain_name]
       end
 
       def recognize_path

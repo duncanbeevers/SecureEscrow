@@ -5,8 +5,9 @@ describe SecureEscrow::Middleware do
   let(:rack_app) { MockRackApp.new }
   let(:rails_app) { MockEngine.new }
   let(:store) { MockRedis.new }
-  let(:middleware) { SecureEscrow::Middleware.new rack_app, rails_app, store }
-  let(:presenter) { SecureEscrow::Middleware::Presenter.new rack_app, rails_app, store, env }
+  let(:config) { { store: store } }
+  let(:middleware) { SecureEscrow::Middleware.new rack_app, rails_app, config }
+  let(:presenter) { SecureEscrow::Middleware::Presenter.new rack_app, rails_app, config, env }
   let(:env) { {} }
 
   context 'as a Rack application' do
@@ -172,9 +173,7 @@ describe SecureEscrow::Middleware do
       end
 
       describe 'configured not to check for escrowable routes' do
-        before(:each) do
-          rails_app.config.secure_escrow[:allow_non_escrow_routes] = true
-        end
+        let(:config) { { store: store, allow_non_escrow_routes: true } }
 
         it 'should store https existent, non-escrow routes' do
           presenter.env[REQUEST_METHOD] = POST
