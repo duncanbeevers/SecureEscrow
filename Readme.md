@@ -45,7 +45,7 @@ Awesome::Application.middleware.insert_before(
   Rack::Lock,
   SecureEscrow::Middleware,
   Awesome::Application,
-  Awesome::Application.config.redis
+  store: Awesome::Application.config.redis
 )
 ````
 
@@ -83,6 +83,8 @@ get    'signin' => 'sessions#new',      as: :new_user_session
 escrow 'signin' => 'sessions#create',   as: :user_session
 get    'signout'=> 'sessions#destroy',  as: :destroy_user_session
 ````
+
+Alternatively, SecureEscrow can be configured to escrow any POST action without explicitly declaring it within the application. Just provide `allow_non_escrow_routes: true` to the initial SecureEscrow configuration.
 
 ### Deliver JavaScript assets
 SecureEscrow integrates in the Rails asset pipeline. Just add the following to your <tt>application.js</tt>.
