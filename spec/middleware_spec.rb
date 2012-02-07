@@ -219,33 +219,65 @@ describe SecureEscrow::Middleware do
         presenter.serve_response_from_escrow!
       end
 
-      it 'should deliver the response with status code 200' do
-        response = [ 403, {}, [ 'text' ] ]
-        store_in_escrow store, 'id', 'nonce', response
-        set_escrow_cookie presenter, 'id', 'nonce'
+      context 'when the response type is not application/json' do
+        it 'should deliver the original response code' do
+          response = [ 403, {}, [ 'text' ] ]
+          store_in_escrow store, 'id', 'nonce', response
+          set_escrow_cookie presenter, 'id', 'nonce'
 
-        status, headers, body = presenter.serve_response_from_escrow!
-        status.should eq 200
+          status, headers, body = presenter.serve_response_from_escrow!
+          status.should eq 403
+        end
+
+        it 'should deliver the content-type header' do
+          response = [ 403, { 'Content-Type' => 'application/x-waterbuffalo' }, [ 'text' ] ]
+          store_in_escrow store, 'id', 'nonce', response
+          set_escrow_cookie presenter, 'id', 'nonce'
+
+          status, headers, body = presenter.serve_response_from_escrow!
+          headers['Content-Type'].should eq 'application/x-waterbuffalo'
+        end
+
+        it 'should deliver the original response body' do
+          response = [ 403, { 'Content-Type' => 'application/x-waterbuffalo' }, [ 'text' ] ]
+          store_in_escrow store, 'id', 'nonce', response
+          set_escrow_cookie presenter, 'id', 'nonce'
+
+          status, headers, body = presenter.serve_response_from_escrow!
+          body.should eq [ 'text' ]
+        end
       end
 
-      it 'should deliver the headers with content-type text/html; charset=utf-8' do
-        response = [ 403, {}, [ 'text' ] ]
-        store_in_escrow store, 'id', 'nonce', response
-        set_escrow_cookie presenter, 'id', 'nonce'
+      context 'when the response type is application/json' do
+        let(:response_headers) { { 'Content-Type' => 'application/json' } }
+        it 'should deliver the response with status code 200' do
+          response = [ 403, response_headers, [ 'text' ] ]
+          store_in_escrow store, 'id', 'nonce', response
+          set_escrow_cookie presenter, 'id', 'nonce'
 
-        status, headers, body = presenter.serve_response_from_escrow!
-        headers['Content-Type'].should eq "text/html; charset=utf-8"
-      end
+          status, headers, body = presenter.serve_response_from_escrow!
+          status.should eq 200
+        end
 
-      it 'should wrap the response in html and json' do
-        response = [ 403, {}, [ 'text' ] ]
-        store_in_escrow store, 'id', 'nonce', response
-        set_escrow_cookie presenter, 'id', 'nonce'
+        it 'should deliver the headers with content-type text/html; charset=utf-8' do
+          response = [ 403, response_headers, [ 'text' ] ]
+          store_in_escrow store, 'id', 'nonce', response
+          set_escrow_cookie presenter, 'id', 'nonce'
 
-        json_representation = "{\"status\":403,\"body\":\"text\"}"
+          status, headers, body = presenter.serve_response_from_escrow!
+          headers['Content-Type'].should eq "text/html; charset=utf-8"
+        end
 
-        status, headers, body = presenter.serve_response_from_escrow!
-        body.join.should eq "<html><body><script id=\"response\" type=\"text/x-json\">#{json_representation}</script></body></html>"
+        it 'should wrap the response in html and json' do
+          response = [ 403, response_headers, [ 'text' ] ]
+          store_in_escrow store, 'id', 'nonce', response
+          set_escrow_cookie presenter, 'id', 'nonce'
+
+          json_representation = "{\"status\":403,\"body\":\"text\"}"
+
+          status, headers, body = presenter.serve_response_from_escrow!
+          body.join.should eq "<html><body><script id=\"response\" type=\"text/x-json\">#{json_representation}</script></body></html>"
+        end
       end
 
       it 'should delete the secure escrow cookie' do

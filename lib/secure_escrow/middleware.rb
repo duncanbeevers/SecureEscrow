@@ -13,6 +13,7 @@ module SecureEscrow
     RAILS_ROUTES     = 'action_dispatch.routes'
     LOCATION         = 'Location'
     CONTENT_TYPE     = 'Content-Type'
+    JSON_CONTENT     = 'application/json'
     ESCROW_MATCH     = /^(.+)\.(.+)$/
     TTL              = 180 # Seconds until proxied response expires
     NONCE            = 'nonce'
@@ -92,11 +93,19 @@ module SecureEscrow
           store.del key
 
           status, headers, body = value[RESPONSE]
-          json = { status: status, body: body.join.to_s }.to_json
-          headers[CONTENT_TYPE] = "text/html; charset=utf-8"
+
+          if JSON_CONTENT == headers[CONTENT_TYPE]
+            body = [
+              "<html><body><script id=\"response\" type=\"text/x-json\">%s</script></body></html>" %
+              { status: status, body: body.join.to_s }.to_json
+            ]
+            headers[CONTENT_TYPE] = "text/html; charset=utf-8"
+            status = 200
+          end
+
           expire_cookie_token!(headers)
 
-          [ 200, headers, [ "<html><body><script id=\"response\" type=\"text/x-json\">#{json}</script></body></html>" ] ]
+          [ status, headers, body ]
         else
           # HTTP Status Code 403 - Forbidden
           return [ 403, {}, [ BAD_NONCE ] ]
