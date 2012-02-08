@@ -21,8 +21,12 @@ module SecureEscrow
     BAD_NONCE        = 'Bad nonce'
     DATA_KEY         = 'secure_escrow'
     REDIRECT_CODES   = 300..399
-    HTTPS            = 'HTTPS'
-    ON               = 'on'
+
+    HTTPS                   = 'HTTPS'
+    LCASE_HTTPS             = 'https'
+    ON                      = 'on'
+    HTTP_X_FORWARDED_PROTO  = 'HTTP_X_FORWARDED_PROTO'
+    RACK_URL_SCHEME         = 'rack.url_scheme'
   end
 
   class Middleware
@@ -79,7 +83,7 @@ module SecureEscrow
       end
 
       def store_response_in_escrow?
-        return false unless POST == env[REQUEST_METHOD] && ON == env[HTTPS]
+        return false unless POST == env[REQUEST_METHOD] && https?
         recognized = recognize_path
         config[:allow_non_escrow_routes] ?
           recognized :
@@ -204,6 +208,14 @@ module SecureEscrow
       end
 
       private
+      def https?
+        # Fixed in rack >= 1.3
+        return true if env[HTTPS] == ON
+        return true if LCASE_HTTPS == env[HTTP_X_FORWARDED_PROTO]
+        return true if env[HTTP_X_FORWARDED_PROTO] && LCASE_HTTPS == env[HTTP_X_FORWARDED_PROTO].split(',')[0]
+        return true if LCASE_HTTPS == env[RACK_URL_SCHEME]
+      end
+
       def rails_config
         @rails_config ||= rails_app.config.secure_escrow
       end
