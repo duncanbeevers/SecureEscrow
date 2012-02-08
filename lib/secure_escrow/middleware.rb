@@ -96,7 +96,7 @@ module SecureEscrow
 
           if headers[CONTENT_TYPE] && JSON_CONTENT.match(headers[CONTENT_TYPE])
             body = [
-              "<html><body><script id=\"response\" type=\"text/x-json\">%s</script></body></html>" %
+              "<html><body><script id=\"response\" type=\"text/x-escrow-json\">%s</script></body></html>" %
               { status: status, body: body.join.to_s }.to_json
             ]
             headers[CONTENT_TYPE] = "text/html; charset=utf-8"

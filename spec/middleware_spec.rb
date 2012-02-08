@@ -276,7 +276,7 @@ describe SecureEscrow::Middleware do
           json_representation = "{\"status\":403,\"body\":\"text\"}"
 
           status, headers, body = presenter.serve_response_from_escrow!
-          body.join.should eq "<html><body><script id=\"response\" type=\"text/x-json\">#{json_representation}</script></body></html>"
+          body.join.should eq "<html><body><script id=\"response\" type=\"text/x-escrow-json\">#{json_representation}</script></body></html>"
         end
       end
 
