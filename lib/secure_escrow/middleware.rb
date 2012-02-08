@@ -21,6 +21,8 @@ module SecureEscrow
     BAD_NONCE        = 'Bad nonce'
     DATA_KEY         = 'secure_escrow'
     REDIRECT_CODES   = 300..399
+    HTTPS            = 'HTTPS'
+    ON               = 'on'
   end
 
   class Middleware
@@ -77,7 +79,7 @@ module SecureEscrow
       end
 
       def store_response_in_escrow?
-        return false unless POST == env[REQUEST_METHOD]
+        return false unless POST == env[REQUEST_METHOD] && ON == env[HTTPS]
         recognized = recognize_path
         config[:allow_non_escrow_routes] ?
           recognized :

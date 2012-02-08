@@ -164,6 +164,7 @@ describe SecureEscrow::Middleware do
 
       it 'should not store non-escrow routes' do
         presenter.env[REQUEST_METHOD] = POST
+        presenter.env[HTTPS] = ON
 
         rails_app.routes.should_receive(:recognize_path).
           once.with(env[REQUEST_PATH], { method: POST }).
@@ -177,8 +178,14 @@ describe SecureEscrow::Middleware do
 
         it 'should store https existent, non-escrow routes' do
           presenter.env[REQUEST_METHOD] = POST
+          presenter.env[HTTPS] = ON
 
           presenter.store_response_in_escrow?.should be_true
+        end
+
+        it 'should not store non-https requests' do
+          presenter.env[REQUEST_METHOD] = POST
+          presenter.store_response_in_escrow?.should be_false
         end
 
         it 'should not store non-existent routes' do
@@ -192,6 +199,7 @@ describe SecureEscrow::Middleware do
 
       it 'should store escrow routes' do
         presenter.env[REQUEST_METHOD] = POST
+        presenter.env[HTTPS] = ON
 
         rails_app.routes.should_receive(:recognize_path).
           once.with(env[REQUEST_PATH], { method: POST }).
