@@ -47,7 +47,7 @@ module SecureEscrow
 
       def self.iframe_necessary?
         config.values_at(:secure_domain_name, :secure_domain_protocol, :secure_domain_port) !=
-          config.values_at(:insecure_domain_name, :secure_domain_protocol, :secure_domaina_port)
+          config.values_at(:insecure_domain_name, :insecure_domain_protocol, :insecure_domain_port)
       end
 
       def self.escrow_options controller, request, options, method
