@@ -101,9 +101,15 @@ module SecureEscrow
           status, headers, body = value[RESPONSE]
 
           if headers[CONTENT_TYPE] && JSON_CONTENT.match(headers[CONTENT_TYPE])
+            original_body = ""
+
+            body.each do |chunk|
+              original_body += chunk
+            end
+
             body = [
               "<html><body><script id=\"response\" type=\"text/x-escrow-json\">%s</script></body></html>" %
-              { status: status, body: body.join.to_s }.to_json
+              { status: status, body: original_body }.to_json
             ]
             headers[CONTENT_TYPE] = "text/html; charset=utf-8"
             status = 200
